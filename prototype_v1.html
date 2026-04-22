@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prototipo - Financiera Soluciones GS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        softBeige: '#f5f1e6',
+                        primaryBlue: '#0284c7',
+                        primaryBlueDark: '#0369a1',
+                        primaryBlueLight: '#e0f2fe',
+                        textDark: '#1e293b',
+                        textMuted: '#64748b',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Overrides & Animation */
+        body { font-family: 'Inter', sans-serif; }
+        .screen { display: none; }
+        .screen.active { 
+            display: block; 
+            animation: fadeIn 0.3s ease-in-out; 
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Scrollbar styles for tables */
+        .table-container::-webkit-scrollbar { height: 8px; width: 8px; }
+        .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .table-container::-webkit-scrollbar-track { background: #f1f5f9; }
+        
+        /* Toast Animation */
+        .toast {
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .toast.active { transform: translateX(0); }
+        
+        /* Legacy styles compatibility */
+        .table-container { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8fafc; padding: 16px 24px; font-size: 0.75rem; text-transform: uppercase; color: #64748b; text-align: left; }
+        td { padding: 16px 24px; border-top: 1px solid #f1f5f9; font-size: 0.85rem; }
+        .badge { padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        
+        /* Common components mapped to Tailwind via @apply or keeping simple classes */
+        .card { @apply bg-white p-6 rounded-2xl shadow-sm mb-6 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md; }
+        .btn { @apply inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold cursor-pointer transition-all duration-200 gap-2 border-none; }
+        .btn-primary { @apply bg-primaryBlue text-white hover:bg-primaryBlueDark; }
+        .btn-light { @apply bg-white border border-slate-200 hover:bg-slate-50; }
+        .form-input, .form-select { @apply w-full p-3 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:border-primaryBlue focus:outline-none transition-colors; }
+        .form-label { @apply block text-sm font-semibold mb-2 text-textDark; }
+        .grid-2 { @apply grid grid-cols-1 md:grid-cols-2 gap-6; }
+        .grid-3 { @apply grid grid-cols-1 md:grid-cols-3 gap-6; }
+    </style>
+</head>
+
+<body class="bg-softBeige text-textDark flex min-h-screen overflow-x-hidden">
+    <!-- Sidebar -->
+    <div class="sidebar w-[260px] bg-primaryBlue text-white flex flex-col shadow-lg z-50 fixed h-full transition-all duration-300 left-[-260px] md:left-0 md:relative">
+        <div class="logo p-8 text-2xl font-extrabold flex items-center gap-3 tracking-tighter">
+            <div class="w-10 h-10 bg-white/20 flex items-center justify-center rounded-xl text-lg backdrop-blur-sm">GS</div>
+            FS GS
+        </div>
+        <ul class="nav-menu flex-1 px-4 space-y-1">
+            <li><a class="nav-link flex items-center p-3 text-white/70 rounded-xl hover:bg-white/10 hover:text-white hover:translate-x-1 transition-all cursor-pointer font-medium active-nav" onclick="showScreen('dashboard')"><span class="mr-3 text-xl">📊</span> Dashboard</a></li>
+            <li><a class="nav-link flex items-center p-3 text-white/70 rounded-xl hover:bg-white/10 hover:text-white hover:translate-x-1 transition-all cursor-pointer font-medium" onclick="showScreen('clientes')"><span class="mr-3 text-xl">👥</span> Clientes</a></li>
+            <li><a class="nav-link flex items-center p-3 text-white/70 rounded-xl hover:bg-white/10 hover:text-white hover:translate-x-1 transition-all cursor-pointer font-medium" onclick="showScreen('creditos')"><span class="mr-3 text-xl">📝</span> Nuevo Crédito</a></li>
+            <li><a class="nav-link flex items-center p-3 text-white/70 rounded-xl hover:bg-white/10 hover:text-white hover:translate-x-1 transition-all cursor-pointer font-medium" onclick="showScreen('gestion-fichas')"><span class="mr-3 text-xl">📋</span> Estado de Cuenta</a></li>
+            <li><a class="nav-link flex items-center p-3 text-white/70 rounded-xl hover:bg-white/10 hover:text-white hover:translate-x-1 transition-all cursor-pointer font-medium" onclick="showScreen('abonos')"><span class="mr-3 text-xl">✅</span> Abonos</a></li>
+            <li><a class="nav-link flex items-center p-3 text-white/70 rounded-xl hover:bg-white/10 hover:text-white hover:translate-x-1 transition-all cursor-pointer font-medium" onclick="showScreen('reestructura')"><span class="mr-3 text-xl">🔄</span> Reestructurar</a></li>
+            <li><a class="nav-link flex items-center p-3 text-white/70 rounded-xl hover:bg-white/10 hover:text-white hover:translate-x-1 transition-all cursor-pointer font-medium" onclick="showScreen('reportes')"><span class="mr-3 text-xl">📈</span> Reportes</a></li>
+            <li><a class="nav-link flex items-center p-3 text-white/70 rounded-xl hover:bg-white/10 hover:text-white hover:translate-x-1 transition-all cursor-pointer font-medium" onclick="showScreen('cobranza')"><span class="mr-3 text-xl">🕒</span> Corte de Caja</a></li>
+            <li><a class="nav-link flex items-center p-3 text-white/70 rounded-xl hover:bg-white/10 hover:text-white hover:translate-x-1 transition-all cursor-pointer font-medium" onclick="showScreen('config')"><span class="mr-3 text-xl">⚙️</span> Configuración</a></li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content flex-1 flex flex-col w-full md:ml-0 ml-0 transition-all duration-300">
+        <!-- Topbar -->
+        <div class="topbar h-[60px] bg-white flex items-center justify-between px-6 md:px-10 shadow-sm sticky top-0 z-40">
+            <div class="flex items-center gap-3">
+                <button class="md:hidden text-2xl cursor-pointer" onclick="document.querySelector('.sidebar').classList.toggle('left-0')">☰</button>
+                <strong class="text-lg text-gray-800">Financiera Soluciones GS</strong>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-right hidden sm:block">
+                    <div class="font-bold text-sm text-gray-800">Luis Herrera</div>
+                    <div class="text-xs text-textMuted">Administrador</div>
+                </div>
+                <div class="w-8 h-8 bg-primaryBlueLight rounded-full flex items-center justify-center text-primaryBlue font-bold text-xs">LH</div>
+            </div>
+        </div>
+
+        <div class="content-body p-6 md:p-8 w-full mx-auto">
+            <!-- Pantallas -->
+            <div id="screen-dashboard" class="screen active">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <div>
+                        <h2>Tablero de Control</h2>
+                        <p class="subtitle">Estado crítico de la financiera en tiempo real.</p>
+                    </div>
+                </div>
+                <div id="dashboard-stats" class="grid grid-3">
+                    <!-- Dinámico -->
+                </div>
+
+                <div class="grid grid-2" style="margin-top:25px;">
+                    <div class="card">
+                        <h4>Rendimiento de Cobranza (Semanal)</h4>
+                        <div id="chart-cobranza"
+                            style="height:200px; display:flex; align-items:flex-end; gap:10px; padding-top:20px;">
+                            <!-- Simulación de Gráfica CSS -->
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h4>Distribución de Cartera</h4>
+                        <div id="chart-cartera"
+                            style="height:200px; display:flex; justify-content:center; align-items:center;">
+                            <!-- Simulación de Gráfica Circular SVG -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top:25px;">
+                    <h4>Actividad Crítica Reciente</h4>
+                    <div id="dashboard-activity">
+                        <!-- Dinámico -->
+                    </div>
+                </div>
+            </div>
+
+            <div id="screen-clientes" class="screen">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <div>
+                        <h2>Gestión de Clientes</h2>
+                        <p class="subtitle">Base de datos centralizada de acreditados.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="FinanceApp.modals.open('modal-nuevo-cliente')">+ Nuevo
+                        Cliente</button>
+                </div>
+                <div class="table-container">
+                    <table id="table-clientes">
+                        <thead>
+                            <tr>
+                                <th>Folio</th>
+                                <th>Nombre Completo</th>
+                                <th>Ocupación/Negocio</th>
+                                <th>Zona</th>
+                                <th>Estatus</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody><!-- Dinámico --></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="screen-creditos" class="screen">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <div>
+                        <h2>Creación de Crédito</h2>
+                        <p class="subtitle">Configura los términos del nuevo préstamo individual.</p>
+                    </div>
+                    <button class="btn btn-light" onclick="FinanceApp.modals.open('modal-nuevo-cliente')">+ Agregar
+                        Cliente</button>
+                </div>
+                <div class="grid grid-2">
+                    <div class="card">
+                        <div class="form-group">
+                            <label class="form-label">Seleccionar Cliente</label>
+                            <select id="credito-cliente-select" class="form-select"></select>
+                        </div>
+                        <div class="grid" style="grid-template-columns: 1fr 1fr;">
+                            <div class="form-group">
+                                <label class="form-label">Tipo de Crédito</label>
+                                <select id="credito-tipo" class="form-select"
+                                    onchange="FinanceApp.ui.onTipoCreditoChange()">
+                                    <option value="diario">Diario</option>
+                                    <option value="semanal" selected>Semanal</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Monto Solicitado</label>
+                                <input type="number" id="credito-monto" class="form-input" value="10000"
+                                    oninput="FinanceApp.ui.updateCreditoPreview()">
+                            </div>
+                        </div>
+                        <div class="grid" style="grid-template-columns: 1fr 1fr;">
+                            <div class="form-group">
+                                <label class="form-label">Plazo (Semanas/Días)</label>
+                                <input type="number" id="credito-plazo" class="form-input" value="13"
+                                    oninput="FinanceApp.ui.updateCreditoPreview()">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Tasa (%)</label>
+                                <input type="number" id="credito-tasa" class="form-input" value="20"
+                                    oninput="FinanceApp.ui.updateCreditoPreview()">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" style="width:100%"
+                            onclick="FinanceApp.actions.crearCredito()">Generar Crédito y Plan de Pagos</button>
+                    </div>
+                    <div class="card" style="background:#f8fafc" id="credito-preview">
+                        <!-- Dinámico -->
+                    </div>
+                </div>
+            </div>
+
+            <div id="screen-gestion-fichas" class="screen">
+                <h2>Estado de Cuenta</h2>
+                <p class="subtitle">Consulta y gestiona las fichas de cada crédito activo.</p>
+                <div class="card">
+                    <div style="display:flex; gap:10px; margin-bottom:20px;">
+                        <input type="text" id="busqueda-fichas" class="form-input" style="flex:1"
+                            placeholder="Ingrese Folio de Crédito (Ej: CR-001)...">
+                        <button class="btn btn-primary"
+                            onclick="FinanceApp.actions.consultarFichas()">Consultar</button>
+                    </div>
+                </div>
+
+                <div id="detalle-fichas-container" style="display:none">
+                    <div class="card">
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                            <h4 id="ficha-head-cliente">Cliente: --</h4>
+                            <div id="ficha-stats-summary" style="font-weight:600; color:var(--primary-blue)"></div>
+                        </div>
+                        <div class="table-container">
+                            <table id="table-fichas-detalle">
+                                <thead>
+                                    <tr>
+                                        <th># Ficha</th>
+                                        <th>Fecha Vencimiento</th>
+                                        <th>Fecha Pago</th>
+                                        <th>Hora</th>
+                                        <th>Folio</th>
+                                        <th>Capital</th>
+                                        <th>Interés</th>
+                                        <th>Total</th>
+                                        <th>Abono</th>
+                                        <th>Mora</th>
+                                        <th>Saldo Cap.</th>
+                                        <th>Estatus</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody><!-- Dinámico --></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Otras pantallas con estructura similar simplificada para el demo -->
+            <div id="screen-abonos" class="screen">
+                <h2>Abonos Recientes</h2>
+                <p class="subtitle">Historial de captación de capital.</p>
+                <div class="table-container">
+                    <table id="table-abonos">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Crédito</th>
+                                <th>Cliente</th>
+                                <th>Monto</th>
+                                <th>Estatus</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="screen-reestructura" class="screen">
+                <h2>Reestructuración de Deuda</h2>
+                <p class="subtitle">Modifica las condiciones de un crédito existente para facilitar el pago.</p>
+                <div class="card">
+                    <div style="display:flex; gap:10px; margin-bottom:20px;">
+                        <input type="text" id="busqueda-reestructura" class="form-input" style="flex:1"
+                            placeholder="Ingrese Folio (Ej: CR-001)...">
+                        <button class="btn btn-primary" onclick="FinanceApp.actions.reestConsultar()">Buscar
+                            Cuenta</button>
+                    </div>
+                </div>
+
+                <div id="reest-detalle" style="display:none">
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <h4 style="margin-bottom:15px">Condiciones Actuales</h4>
+                            <div id="reest-info-actual" style="font-size:0.9rem; line-height:1.8"></div>
+                        </div>
+                        <div class="card" style="border: 2px solid var(--primary-blue-light)">
+                            <h4 style="margin-bottom:15px">Propuesta de Reestructura</h4>
+                            <div class="form-group">
+                                <label class="form-label">Monto a Liquidar (Descuento aplicado)</label>
+                                <input type="number" id="reest-nuevo-monto" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Nuevo Plazo (Semanas)</label>
+                                <input type="number" id="reest-nuevo-plazo" class="form-input">
+                            </div>
+                            <button class="btn btn-primary" style="width:100%"
+                                onclick="FinanceApp.actions.reestAplicar()">Aplicar Reestructura</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="screen-reportes" class="screen">
+                <h2>Central de Reportes</h2>
+                <p class="subtitle">Análisis detallado de cartera y morosidad.</p>
+                <div class="card">
+                    <div class="grid grid-3" style="align-items:flex-end;">
+                        <div class="form-group">
+                            <label class="form-label">Filtrar por Fecha</label>
+                            <input type="date" id="reporte-fecha" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Estatus</label>
+                            <select id="reporte-estatus" class="form-select">
+                                <option value="todos">Todos</option>
+                                <option value="vencidos">Vencidos (Mora)</option>
+                                <option value="pagados">Pagados Hoy</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="FinanceApp.actions.generarReporte()">Generar
+                            Reporte</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="table-reportes">
+                        <thead>
+                            <tr>
+                                <th>Folio</th>
+                                <th>Cliente</th>
+                                <th>Vencimiento</th>
+                                <th>Total</th>
+                                <th>Saldo</th>
+                                <th>Estatus</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="screen-cobranza" class="screen">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <div>
+                        <h2>Corte de Caja</h2>
+                        <p class="subtitle">Gestión de efectivo y cierre de turno diario.</p>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="badge badge-success" style="font-size:0.9rem; padding:8px 16px;">CAJA ABIERTA</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;" id="corte-fecha">--/--/--</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-3">
+                    <!-- Columna 1: Resumen de Ingresos -->
+                    <div class="card">
+                        <h4 style="margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">Resumen de Ingresos</h4>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                            <span>Efectivo:</span>
+                            <strong id="resumen-efectivo">$0.00</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                            <span>Transferencia:</span>
+                            <strong id="resumen-transferencia">$0.00</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-top:15px; padding-top:10px; border-top:1px solid #f1f5f9; font-size:1.1rem;">
+                            <span>Total Ingresos:</span>
+                            <strong id="resumen-total-ingresos" style="color:var(--success)">$0.00</strong>
+                        </div>
+                    </div>
+
+                    <!-- Columna 2: Arqueo de Efectivo -->
+                    <div class="card" style="border: 2px solid var(--primary-blue-light);">
+                        <h4 style="margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">Arqueo de Efectivo</h4>
+                        <div style="margin-bottom:15px;">
+                            <label class="form-label">Efectivo Teórico en Caja</label>
+                            <div id="arqueo-teorico" style="font-size:1.5rem; font-weight:700;">$0.00</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Efectivo Real (Contado)</label>
+                            <input type="number" id="arqueo-real" class="form-input" placeholder="0.00" oninput="FinanceApp.ui.calcularDiferencia()">
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:10px; border-radius:8px;">
+                            <span style="font-size:0.9rem; font-weight:600;">Diferencia:</span>
+                            <strong id="arqueo-diferencia" style="font-size:1.1rem;">$0.00</strong>
+                        </div>
+                    </div>
+
+                    <!-- Columna 3: Acciones de Cierre -->
+                    <div class="card">
+                        <h4 style="margin-bottom:15px;">Acciones de Turno</h4>
+                        <button class="btn btn-primary" style="width:100%; margin-bottom:10px; padding:15px;" onclick="FinanceApp.actions.realizarCorte()">
+                            <span style="font-size:1.2rem;">🔒 Cerrar Turno</span>
+                        </button>
+                        <button class="btn btn-light" style="width:100%;" onclick="FinanceApp.modals.open('modal-retiro')">
+                            💸 Registrar Retiro/Gasto
+                        </button>
+                        <div style="margin-top:20px; font-size:0.8rem; color:var(--text-muted); text-align:center;">
+                            Al cerrar turno se generará el reporte Z y se reiniciarán los contadores del día.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalle de Movimientos -->
+                <div class="grid grid-2">
+                    <div class="card">
+                        <h4 style="margin-bottom:15px;">Movimientos del Turno</h4>
+                        <div class="table-container" style="max-height:400px; overflow-y:auto;">
+                            <table id="table-movimientos-turno">
+                                <thead style="position:sticky; top:0; z-index:10;">
+                                    <tr>
+                                        <th>Hora</th>
+                                        <th>Concepto</th>
+                                        <th>Tipo</th>
+                                        <th>Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody><!-- Dinámico --></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h4 style="margin-bottom:15px;">Historial de Cortes (Z-Reports)</h4>
+                        <div class="table-container" style="max-height:400px; overflow-y:auto;">
+                            <table id="table-cortes-historial">
+                                <thead style="position:sticky; top:0; z-index:10;">
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Hora</th>
+                                        <th>Total</th>
+                                        <th>Diferencia</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody><!-- Dinámico --></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="screen-config" class="screen">
+                <h2>Configuración del Sistema</h2>
+                <p class="subtitle">Ajusta los parámetros operativos de la financiera.</p>
+                <div class="grid grid-2">
+                    <div class="card">
+                        <h4 style="margin-bottom:15px">Parámetros de Cobro</h4>
+                        <div class="form-group">
+                            <label class="form-label">Mora por día de atraso ($)</label>
+                            <input type="number" id="config-mora" class="form-input" value="50">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tasa fija crédito diario (%)</label>
+                            <input type="number" id="config-tasa-diaria" class="form-input" value="18">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tasa fija crédito semanal (%)</label>
+                            <input type="number" id="config-tasa-semanal" class="form-input" value="20">
+                        </div>
+                        <button class="btn btn-primary"
+                            onclick="FinanceApp.actions.guardarConfig()">Guardar Cambios</button>
+                    </div>
+                    <div class="card">
+                        <h4 style="margin-bottom:15px">Zonas de Cobranza</h4>
+                        <div id="lista-zonas" style="margin-bottom:15px;">
+                            <div class="badge badge-success" style="margin:2px">Centro</div>
+                            <div class="badge badge-success" style="margin:2px">Norte</div>
+                            <div class="badge badge-success" style="margin:2px">Sur</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Nueva Zona</label>
+                            <input type="text" id="nueva-zona-input" class="form-input"
+                                placeholder="Nombre de colonia...">
+                        </div>
+                        <button class="btn btn-light" style="width:100%"
+                            onclick="FinanceApp.utils.toast('Zona agregada', '📍')">+ Agregar Zona</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    </div>
+    <!-- MODALES -->
+    <div id="modal-nuevo-cliente" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nuevo Cliente</h3>
+            </div>
+            <div class="modal-body">
+                <div class="grid" style="grid-template-columns: 1fr 1fr;">
+                    <div class="form-group"><label class="form-label">Nombre(s)</label><input type="text" id="nc-nombre"
+                            class="form-input"></div>
+                    <div class="form-group"><label class="form-label">Apellidos</label><input type="text"
+                            id="nc-apellido" class="form-input"></div>
+                </div>
+                <div class="form-group"><label class="form-label">Dirección</label><input type="text"
+                        id="nc-direccion" class="form-input"></div>
+                <div class="form-group"><label class="form-label">Zona/Colonia</label><input type="text" id="nc-zona"
+                        class="form-input" placeholder="Ej: Centro"></div>
+                <div class="form-group"><label class="form-label">Negocio/Ocupación</label><input type="text"
+                        id="nc-negocio" class="form-input"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-light" onclick="FinanceApp.modals.close('modal-nuevo-cliente')">Cancelar</button>
+                <button class="btn btn-primary" onclick="FinanceApp.actions.guardarCliente()">Guardar Cliente</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-retiro" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Registrar Salida de Efectivo</h3>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Monto ($)</label>
+                    <input type="number" id="retiro-monto" class="form-input" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Concepto / Motivo</label>
+                    <input type="text" id="retiro-concepto" class="form-input" placeholder="Ej: Pago de luz, Compra de papelería...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-light" onclick="FinanceApp.modals.close('modal-retiro')">Cancelar</button>
+                <button class="btn btn-primary" onclick="FinanceApp.actions.registrarRetiro()">Registrar Salida</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-success" class="modal-overlay">
+        <div class="modal-content" style="text-align:center">
+            <div style="color:var(--success); font-size:3rem; margin-bottom:15px;">✓</div>
+            <h3 id="success-title">Operación Exitosa</h3>
+            <p id="success-message" style="margin:15px 0; color:var(--text-muted)"></p>
+            <button class="btn btn-primary" onclick="FinanceApp.modals.close('modal-success')">Continuar</button>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <span id="toast-icon">✨</span>&nbsp;
+        <span id="toast-text">Mensaje del sistema</span>
+    </div>
+
+    <script>
+        /**
+         * FinanceApp - Motor de Lógica del Prototipo v3
+         * Maneja estados contables, reportes y reestructuración.
+         */
+        const FinanceApp = {
+            state: {
+                clientes: [
+                    { id: 'CLI-001', nombre: 'Carlos', apellido: 'Ruiz Mendoza', direccion: 'Calle Centro 123', negocio: 'Abarrotes "El Oasis"', zona: 'Centro', estatus: 'Activo' },
+                    { id: 'CLI-002', nombre: 'Mónica', apellido: 'Esparza', direccion: 'Av. Palmas 45', negocio: 'Estética Unisex', zona: 'Las Palmas', estatus: 'Activo' },
+                    { id: 'CLI-003', nombre: 'Roberto', apellido: 'Gómez', direccion: 'Calle Industria 8', negocio: 'Taller Mecánico', zona: 'Industrial', estatus: 'En Revisión' }
+                ],
+                creditos: [
+                    {
+                        id: 'CR-001', clienteId: 'CLI-001', monto: 12000,
+                        interesTotal: 2400, total: 14400, cuota: 1107,
+                        pagado: 2214, totalFichas: 13, tipo: 'semanal',
+                        saldoCapital: 10000, fichas: []
+                    }
+                ],
+                abonosHistorial: [
+                    { id: 'AB-101', hora: '10:30', tipo: 'Ficha', medio: 'Efectivo', folio: 'CR-001', abono: 1107, mora: 0, total: 1107, fecha: '2026-02-20' }
+                ],
+                movimientosTurno: [], // Lista unificada de ingresos y egresos del turno actual
+                cortesHistorial: [],
+                config: { moraPorDia: 50, tasaDiaria: 18, tasaSemanal: 20 }
+            },
+
+            init() {
+                // Generar fechas y fichas para créditos existentes
+                this.state.creditos.forEach(c => {
+                    const capitalPorFicha = Math.round(c.monto / c.totalFichas);
+                    const interesPorFicha = Math.round(c.interesTotal / c.totalFichas);
+
+                    c.fichas = Array(c.totalFichas).fill().map((_, i) => {
+                        const fecha = new Date();
+                        const delta = c.tipo === 'diario' ? 1 : 7;
+                        fecha.setDate(fecha.getDate() + (i * delta));
+                        const pagada = (i + 1) * c.cuota <= c.pagado;
+
+                        return {
+                            num: i + 1,
+                            fecha: fecha.toISOString().split('T')[0],
+                            fechaPago: pagada ? new Date().toISOString().split('T')[0] : '',
+                            hora: pagada ? '11:00' : '--:--',
+                            folio: `F-${c.id}-${i + 1}`,
+                            capital: capitalPorFicha,
+                            interes: interesPorFicha,
+                            total: c.cuota,
+                            abono: pagada ? c.cuota : 0,
+                            mora: 0,
+                            saldoCap: c.monto - (pagada ? (i + 1) * capitalPorFicha : i * capitalPorFicha),
+                            pagada: pagada
+                        };
+                    });
+                });
+
+                // Datos demo iniciales
+                const today = new Date().toISOString().split('T')[0];
+                this.state.abonosHistorial = [
+                    { id: 'AB-101', hora: '09:15', tipo: 'Ficha', medio: 'Efectivo', folio: 'CR-001', abono: 1107, mora: 0, total: 1107, fecha: today },
+                    { id: 'AB-100', hora: '08:45', tipo: 'Ficha', medio: 'Transferencia', folio: 'CR-002', abono: 500, mora: 50, total: 550, fecha: today }
+                ];
+
+                // Sincronizar movimientos de turno iniciales
+                this.state.abonosHistorial.forEach(a => {
+                    if (a.fecha === today) {
+                        this.state.movimientosTurno.push({
+                            hora: a.hora,
+                            concepto: `Cobro ${a.folio} (${a.tipo})`,
+                            tipo: 'Ingreso',
+                            medio: a.medio,
+                            monto: a.total
+                        });
+                    }
+                });
+
+                this.ui.updateDashboard();
+                this.ui.renderClientes();
+                this.ui.renderCreditoSelects();
+                this.ui.initCreditoForm();
+                this.ui.updateCreditoPreview();
+                this.ui.renderCobranzaDia();
+                this.ui.renderCharts();
+                this.ui.renderActivity();
+                this.ui.initConfigForm();
+                this.ui.renderAbonosHistorial();
+                
+                // Fecha en pantalla corte
+                document.getElementById('corte-fecha').innerText = new Date().toLocaleDateString();
+
+                console.log("FinanceApp v5 (Final) Initialized 🚀");
+            },
+
+            ui: {
+                showScreen(id) {
+                    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                    const target = document.getElementById('screen-' + id);
+                    if (target) target.classList.add('active');
+
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    const activeLink = Array.from(document.querySelectorAll('.nav-link'))
+                        .find(l => l.getAttribute('onclick').includes(id));
+                    if (activeLink) activeLink.classList.add('active');
+
+                    document.querySelector('.sidebar').classList.remove('mobile-open');
+
+                    if (id === 'cobranza') { FinanceApp.ui.renderCobranzaDia(); FinanceApp.ui.renderCortes(); }
+                    if (id === 'dashboard') { FinanceApp.ui.renderCharts(); FinanceApp.ui.renderActivity(); }
+                },
+
+                renderCharts() {
+                    // Gráfica de Barras (CSS)
+                    const barContainer = document.getElementById('chart-cobranza');
+                    if (barContainer) {
+                        const data = [40, 70, 55, 90, 65, 85, 95]; // Valores %
+                        const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+                        barContainer.innerHTML = data.map((v, i) => `
+                            <div style="flex:1; display:flex; flex-direction:column; align-items:center; height:100%; justify-content:flex-end;">
+                                <div style="width:100%; background:var(--primary-blue); height:${v}%; border-radius:4px 4px 0 0; position:relative;">
+                                </div>
+                                <div style="font-size:8px; margin-top:5px; font-weight:600; color:var(--text-muted)">${days[i]}</div>
+                            </div>
+                        `).join('');
+                    }
+
+                    // Gráfica Circular (SVG)
+                    const pieContainer = document.getElementById('chart-cartera');
+                    if (pieContainer) {
+                        pieContainer.innerHTML = `
+                            <svg width="140" height="140" viewBox="0 0 42 42">
+                                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#e2e8f0" stroke-width="3"></circle>
+                                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--primary-blue)" stroke-width="4" stroke-dasharray="70 30" stroke-dashoffset="25"></circle>
+                                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--success)" stroke-width="4" stroke-dasharray="20 80" stroke-dashoffset="95"></circle>
+                            </svg>
+                            <div style="font-size:0.7rem; margin-left:15px;">
+                                <div style="display:flex; align-items:center; gap:5px;"><div style="width:8px; height:8px; background:var(--primary-blue); border-radius:2px;"></div> Activos</div>
+                                <div style="display:flex; align-items:center; gap:5px; margin-top:3px;"><div style="width:8px; height:8px; background:var(--success); border-radius:2px;"></div> Al día</div>
+                                <div style="display:flex; align-items:center; gap:5px; margin-top:3px;"><div style="width:8px; height:8px; background:var(--danger); border-radius:2px;"></div> Mora</div>
+                            </div>
+                        `;
+                    }
+                },
+
+                renderActivity() {
+                    const container = document.getElementById('dashboard-activity');
+                    if (!container) return;
+                    const activities = [
+                        { time: 'Hace 5 min', user: 'Luis H.', desc: 'Cobró Ficha #2 de CR-001', type: 'pago' },
+                        { time: 'Hace 1 hora', user: 'Sistema', desc: 'Crédito CR-005 liquidado', type: 'success' },
+                        { time: 'Hace 3 horas', user: 'Admin', desc: 'Nuevo cliente: Mariana Solis', type: 'new' }
+                    ];
+                    container.innerHTML = activities.map(a => `
+                        <div style="display:flex; align-items:center; padding:10px; border-bottom:1px solid #f1f5f9; font-size:0.8rem;">
+                            <div style="width:6px; height:6px; border-radius:50%; background:${a.type === 'pago' ? 'var(--primary-blue)' : (a.type === 'success' ? 'var(--success)' : '#9333ea')}; margin-right:10px;"></div>
+                            <div style="flex:1"><strong>${a.user}</strong>: ${a.desc}</div>
+                            <div style="color:var(--text-muted); font-size:0.7rem">${a.time}</div>
+                        </div>
+                    `).join('');
+                },
+
+                updateDashboard() {
+                    const stats = [
+                        { label: 'COBRANZA DEL DÍA', val: `$${FinanceApp.utils.calcularTotalCobrado().toLocaleString()}`, trend: 'Actualizado', color: 'var(--primary-blue)' },
+                        { label: 'MORA ESTIMADA', val: '$8,900', trend: 'Acción Requerida', color: 'var(--danger)' }
+                    ];
+                    const container = document.getElementById('dashboard-stats');
+                    if (container) {
+                        container.innerHTML = stats.map(s => `
+                            <div class="card stat-card">
+                                <div style="color:var(--text-muted); font-size:0.8rem; font-weight:600">${s.label}</div>
+                                <div style="font-size:1.8rem; font-weight:700; margin-top:10px;">${s.val}</div>
+                                <div style="color:${s.color}; font-size:0.75rem; margin-top:8px;">${s.trend}</div>
+                            </div>
+                        `).join('');
+                    }
+                },
+
+                initConfigForm() {
+                    const moraInput = document.getElementById('config-mora');
+                    const tasaDiariaInput = document.getElementById('config-tasa-diaria');
+                    const tasaSemanalInput = document.getElementById('config-tasa-semanal');
+                    if (moraInput) moraInput.value = FinanceApp.state.config.moraPorDia;
+                    if (tasaDiariaInput) tasaDiariaInput.value = FinanceApp.state.config.tasaDiaria;
+                    if (tasaSemanalInput) tasaSemanalInput.value = FinanceApp.state.config.tasaSemanal;
+                },
+
+                initCreditoForm() {
+                    const tipo = document.getElementById('credito-tipo');
+                    const tasa = document.getElementById('credito-tasa');
+                    if (tipo && tasa) {
+                        if (tipo.value === 'diario') tasa.value = FinanceApp.state.config.tasaDiaria;
+                        if (tipo.value === 'semanal') tasa.value = FinanceApp.state.config.tasaSemanal;
+                    }
+                },
+
+                onTipoCreditoChange() {
+                    const tipo = document.getElementById('credito-tipo');
+                    const tasa = document.getElementById('credito-tasa');
+                    if (tipo && tasa) {
+                        if (tipo.value === 'diario') tasa.value = FinanceApp.state.config.tasaDiaria;
+                        if (tipo.value === 'semanal') tasa.value = FinanceApp.state.config.tasaSemanal;
+                    }
+                    this.updateCreditoPreview();
+                },
+
+                renderClientes() {
+                    const tbody = document.querySelector('#table-clientes tbody');
+                    if (!tbody) return;
+                    tbody.innerHTML = FinanceApp.state.clientes.map(c => `
+                        <tr>
+                            <td>${c.id}</td>
+                            <td><strong>${c.nombre} ${c.apellido}</strong></td>
+                            <td>${c.negocio}</td>
+                            <td>${c.zona}</td>
+                            <td><span class="badge ${c.estatus === 'Activo' ? 'badge-success' : 'badge-warning'}">${c.estatus}</span></td>
+                            <td onclick="FinanceApp.ui.showScreen('gestion-fichas'); document.getElementById('busqueda-fichas').value='${FinanceApp.state.creditos.find(cr => cr.clienteId === c.id)?.id || ''}'; FinanceApp.actions.consultarFichas();" style="color:var(--primary-blue); font-weight:600; cursor:pointer">Ver Fichas</td>
+                        </tr>
+                    `).join('');
+                },
+
+                renderCreditoSelects() {
+                    const select = document.getElementById('credito-cliente-select');
+                    if (select) select.innerHTML = FinanceApp.state.clientes.map(c => `<option value="${c.id}">${c.nombre} ${c.apellido}</option>`).join('');
+                },
+
+                updateCreditoPreview() {
+                    const m = parseInt(document.getElementById('credito-monto')?.value) || 0;
+                    const t = parseInt(document.getElementById('credito-tasa')?.value) || 0;
+                    const p = parseInt(document.getElementById('credito-plazo')?.value) || 1;
+                    const int = Math.round(m * (t / 100));
+                    const total = m + int;
+                    const cuota = Math.round(total / p);
+                    const container = document.getElementById('credito-preview');
+                    if (container) container.innerHTML = `
+                        <h4 style="margin-bottom:15px">Resumen Técnico</h4>
+                        <div style="font-size:0.9rem; line-height:1.6">
+                            <p>Capital: <strong>$${m.toLocaleString()}</strong></p>
+                            <p>Interés Total: <strong>$${int.toLocaleString()}</strong></p>
+                            <hr style="margin:10px 0; border:0; border-top:1px solid #e2e8f0">
+                            <p style="font-size:1.1rem; color:var(--primary-blue)">Total de Deuda: <strong>$${total.toLocaleString()}</strong></p>
+                            <p>Pago Sugerido: <strong>$${cuota.toLocaleString()} (${p} pagos)</strong></p>
+                        </div>
+                    `;
+                },
+
+                renderAbonosHistorial() {
+                    const tbody = document.querySelector('#table-abonos tbody');
+                    if (!tbody) return;
+                    tbody.innerHTML = FinanceApp.state.abonosHistorial.map(a => {
+                        const cr = FinanceApp.state.creditos.find(c => c.id === a.folio);
+                        const cli = cr ? FinanceApp.state.clientes.find(c => c.id === cr.clienteId) : null;
+                        const nombre = cli ? `${cli.nombre} ${cli.apellido}` : '-';
+                        return `
+                            <tr>
+                                <td>${a.fecha}</td>
+                                <td>${a.folio}</td>
+                                <td>${nombre}</td>
+                                <td>$${a.total.toLocaleString()}</td>
+                                <td><span class="badge ${a.tipo === 'Mora' ? 'badge-danger' : 'badge-success'}">${a.tipo}</span></td>
+                            </tr>
+                        `;
+                    }).join('');
+                },
+
+                renderCobranzaDia() {
+                    const movs = FinanceApp.state.movimientosTurno;
+
+                    // Cálculos
+                    const efectivo = movs.filter(m => m.tipo === 'Ingreso' && (m.medio === 'Efectivo' || !m.medio)).reduce((sum, m) => sum + m.monto, 0);
+                    const transferencia = movs.filter(m => m.tipo === 'Ingreso' && m.medio === 'Transferencia').reduce((sum, m) => sum + m.monto, 0);
+                    const salidas = movs.filter(m => m.tipo === 'Gasto').reduce((sum, m) => sum + Math.abs(m.monto), 0);
+                    const totalIngresos = efectivo + transferencia;
+                    const efectivoTeorico = efectivo - salidas;
+
+                    // Actualizar KPIs
+                    document.getElementById('resumen-efectivo').innerText = `$${efectivo.toLocaleString()}`;
+                    document.getElementById('resumen-transferencia').innerText = `$${transferencia.toLocaleString()}`;
+                    document.getElementById('resumen-total-ingresos').innerText = `$${totalIngresos.toLocaleString()}`;
+                    document.getElementById('arqueo-teorico').innerText = `$${efectivoTeorico.toLocaleString()}`;
+                    document.getElementById('arqueo-teorico').dataset.val = efectivoTeorico;
+
+                    // Renderizar Movimientos
+                    const tbodyMovs = document.querySelector('#table-movimientos-turno tbody');
+                    if (tbodyMovs) {
+                        tbodyMovs.innerHTML = movs.length > 0 ? movs.map(m => `
+                            <tr>
+                                <td>${m.hora}</td>
+                                <td>${m.concepto}</td>
+                                <td><span class="badge ${m.tipo === 'Gasto' ? 'badge-danger' : 'badge-success'}">${m.tipo}</span></td>
+                                <td style="color:${m.tipo === 'Gasto' ? 'var(--danger)' : 'var(--text-dark)'}">
+                                    ${m.tipo === 'Gasto' ? '-' : ''}$${Math.abs(m.monto).toLocaleString()}
+                                </td>
+                            </tr>
+                        `).join('') : '<tr><td colspan="4" style="text-align:center; color:var(--text-muted)">Sin movimientos en este turno</td></tr>';
+                    }
+
+                    // Renderizar Historial Cortes
+                    const tbodyCortes = document.querySelector('#table-cortes-historial tbody');
+                    if (tbodyCortes) {
+                        tbodyCortes.innerHTML = FinanceApp.state.cortesHistorial.length > 0 ? FinanceApp.state.cortesHistorial.map(c => `
+                            <tr>
+                                <td>${c.fecha}</td>
+                                <td>${c.hora}</td>
+                                <td><strong>$${c.total.toLocaleString()}</strong></td>
+                                <td style="color:${c.diferencia < 0 ? 'var(--danger)' : 'var(--success)'}">${c.diferencia.toLocaleString()}</td>
+                                <td><button class="btn btn-light" style="padding:2px 8px; font-size:0.7rem">🖨️</button></td>
+                            </tr>
+                        `).join('') : '<tr><td colspan="5" style="text-align:center; color:var(--text-muted)">No hay cortes previos</td></tr>';
+                    }
+
+                    this.calcularDiferencia();
+                },
+
+                calcularDiferencia() {
+                    const teorico = parseFloat(document.getElementById('arqueo-teorico').dataset.val) || 0;
+                    const real = parseFloat(document.getElementById('arqueo-real').value) || 0;
+                    const diff = real - teorico;
+                    const el = document.getElementById('arqueo-diferencia');
+                    el.innerText = `$${diff.toLocaleString()}`;
+                    el.style.color = diff < 0 ? 'var(--danger)' : (diff > 0 ? 'var(--success)' : 'var(--text-dark)');
+                },
+            },
+
+            actions: {
+                guardarCliente() {
+                    const n = document.getElementById('nc-nombre').value;
+                    const a = document.getElementById('nc-apellido').value;
+                    if (!n || !a) return FinanceApp.utils.toast("Datos incompletos", "❌");
+                    const id = `CLI-00${FinanceApp.state.clientes.length + 1}`;
+                    const cli = {
+                        id,
+                        nombre: n,
+                        apellido: a,
+                        direccion: document.getElementById('nc-direccion').value || '',
+                        negocio: document.getElementById('nc-negocio').value || 'Negocio',
+                        zona: document.getElementById('nc-zona').value || 'Centro',
+                        estatus: 'Activo'
+                    };
+                    FinanceApp.state.clientes.push(cli);
+                    FinanceApp.ui.renderClientes();
+                    FinanceApp.ui.renderCreditoSelects();
+                    FinanceApp.modals.close('modal-nuevo-cliente');
+                    FinanceApp.utils.toast("Cliente Registrado", "✅");
+                },
+
+                crearCredito() {
+                    const cId = document.getElementById('credito-cliente-select').value;
+                    const m = parseInt(document.getElementById('credito-monto').value);
+                    const p = parseInt(document.getElementById('credito-plazo').value);
+                    const t = parseInt(document.getElementById('credito-tasa').value);
+                    const tipo = document.getElementById('credito-tipo').value;
+                    const id = `CR-00${FinanceApp.state.creditos.length + 1}`;
+                    const int = Math.round(m * (t / 100));
+                    const total = m + int;
+                    const cuota = Math.round(total / p);
+
+                    const newCr = { id, clienteId: cId, monto: m, interesTotal: int, total, cuota, pagado: 0, totalFichas: p, tipo, fichas: [] };
+
+                    newCr.fichas = Array(p).fill().map((_, i) => {
+                        const d = new Date();
+                        const delta = tipo === 'diario' ? 1 : 7;
+                        d.setDate(d.getDate() + (i * delta));
+                        return {
+                            num: i + 1,
+                            fecha: d.toISOString().split('T')[0],
+                            fechaPago: '',
+                            hora: '--:--',
+                            folio: `F-${id}-${i + 1}`,
+                            capital: Math.round(m / p),
+                            interes: Math.round(int / p),
+                            total: cuota,
+                            abono: 0,
+                            mora: 0,
+                            saldoCap: m - (i * Math.round(m / p)),
+                            pagada: false
+                        };
+                    });
+
+                    FinanceApp.state.creditos.push(newCr);
+                    FinanceApp.utils.showSuccess("Crédito Autorizado", `Crédito ${id} generado exitosamente.`);
+                    FinanceApp.ui.showScreen('gestion-fichas');
+                    document.getElementById('busqueda-fichas').value = id;
+                    this.consultarFichas();
+                },
+
+                consultarFichas() {
+                    const folio = document.getElementById('busqueda-fichas').value.toUpperCase();
+                    const cr = FinanceApp.state.creditos.find(c => c.id === folio);
+                    if (!cr) return FinanceApp.utils.toast("Crédito no encontrado", "⚠️");
+
+                    this.currentCredito = cr;
+                    const cli = FinanceApp.state.clientes.find(c => c.id === cr.clienteId);
+
+                    document.getElementById('detalle-fichas-container').style.display = 'block';
+                    document.getElementById('ficha-head-cliente').innerText = `Cliente: ${cli.nombre} ${cli.apellido} (${cr.id})`;
+                    document.getElementById('ficha-stats-summary').innerText = `Saldo Total: $${(cr.total - cr.pagado).toLocaleString()}`;
+
+                    this.renderFichasTabla();
+                },
+
+                renderFichasTabla() {
+                    const tbody = document.querySelector('#table-fichas-detalle tbody');
+                    if (!tbody) return;
+                    tbody.innerHTML = this.currentCredito.fichas.map(f => `
+                        <tr class="${f.pagada ? 'paid' : ''}">
+                            <td>${f.num}</td>
+                            <td>${f.fecha}</td>
+                            <td>${f.fechaPago || '-'}</td>
+                            <td>${f.hora}</td>
+                            <td>${f.folio}</td>
+                            <td>$${f.capital}</td>
+                            <td>$${f.interes}</td>
+                            <td>$${f.total}</td>
+                            <td><strong>$${f.abono}</strong></td>
+                            <td class="${f.mora > 0 ? 'text-danger' : ''}">$${f.mora}</td>
+                            <td>$${f.saldoCap}</td>
+                            <td><span class="badge ${f.pagada ? 'badge-success' : (new Date(f.fecha) < new Date() ? 'badge-danger' : 'badge-warning')}">${f.pagada ? 'Pagada' : (new Date(f.fecha) < new Date() ? 'Vencida' : 'Pendiente')}</span></td>
+                            <td>
+                                ${!f.pagada ? `<button class="btn btn-primary" style="padding:4px 8px; font-size:0.7rem" onclick="FinanceApp.actions.abonarFicha(${f.num})">Abonar</button>` : '✅'}
+                            </td>
+                        </tr>
+                    `).join('');
+                },
+
+                abonarFicha(num) {
+                    const f = this.currentCredito.fichas.find(fi => fi.num === num);
+
+                    // Validar orden
+                    if (num > 1) {
+                        const prev = this.currentCredito.fichas.find(fi => fi.num === num - 1);
+                        if (!prev.pagada) return FinanceApp.utils.toast("Debe liquidar la ficha anterior", "⚠️");
+                    }
+
+                    // Calcular mora si vencida
+                    let mora = 0;
+                    if (new Date(f.fecha) < new Date()) {
+                        mora = FinanceApp.state.config.moraPorDia;
+                    }
+
+                    f.pagada = true;
+                    f.mora = mora;
+                    f.abono = f.total;
+                    f.fechaPago = new Date().toISOString().split('T')[0];
+                    f.hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                    this.currentCredito.pagado += f.total;
+
+                    FinanceApp.state.abonosHistorial.unshift({
+                        id: `AB-${100 + FinanceApp.state.abonosHistorial.length}`,
+                        hora: f.hora,
+                        tipo: 'Ficha',
+                        medio: 'Efectivo',
+                        folio: this.currentCredito.id,
+                        abono: f.total,
+                        mora: mora,
+                        total: f.total + mora,
+                        fecha: f.fechaPago
+                    });
+
+                    // Registrar en movimiento de turno actual
+                    FinanceApp.state.movimientosTurno.unshift({
+                        hora: f.hora,
+                        concepto: `Cobro ${this.currentCredito.id} - Ficha ${f.num}`,
+                        tipo: 'Ingreso',
+                        medio: 'Efectivo',
+                        monto: f.total + mora
+                    });
+
+                    this.renderFichasTabla();
+                    FinanceApp.ui.updateDashboard();
+                    FinanceApp.ui.renderCobranzaDia();
+                    FinanceApp.utils.toast(`Cobro de Ficha #${num} exitoso`, "💰");
+                },
+
+                registrarRetiro() {
+                    const monto = parseFloat(document.getElementById('retiro-monto').value);
+                    const concepto = document.getElementById('retiro-concepto').value;
+                    if (!monto || !concepto) return FinanceApp.utils.toast("Datos incompletos", "❌");
+
+                    FinanceApp.state.movimientosTurno.unshift({
+                        hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        concepto: `Salida: ${concepto}`,
+                        tipo: 'Gasto',
+                        medio: 'Efectivo',
+                        monto: -monto
+                    });
+
+                    FinanceApp.ui.renderCobranzaDia();
+                    FinanceApp.modals.close('modal-retiro');
+                    document.getElementById('retiro-monto').value = '';
+                    document.getElementById('retiro-concepto').value = '';
+                    FinanceApp.utils.toast("Retiro registrado", "💸");
+                },
+
+                realizarCorte() {
+                    const teorico = parseFloat(document.getElementById('arqueo-teorico').dataset.val) || 0;
+                    const real = parseFloat(document.getElementById('arqueo-real').value);
+                    
+                    if (isNaN(real)) return FinanceApp.utils.toast("Debe ingresar el efectivo real", "⚠️");
+
+                    const diff = real - teorico;
+                    const fecha = new Date().toISOString().split('T')[0];
+                    const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                    const corte = {
+                        fecha,
+                        hora,
+                        total: teorico,
+                        real,
+                        diferencia: diff,
+                        movimientos: [...FinanceApp.state.movimientosTurno]
+                    };
+
+                    FinanceApp.state.cortesHistorial.unshift(corte);
+                    FinanceApp.state.movimientosTurno = []; // Limpiar turno
+
+                    FinanceApp.ui.renderCobranzaDia();
+                    document.getElementById('arqueo-real').value = '';
+                    FinanceApp.utils.showSuccess("Corte Realizado", `Turno cerrado correctamente. Diferencia: $${diff}`);
+                },
+
+                generarReporte() {
+                    const fecha = document.getElementById('reporte-fecha').value;
+                    const estatus = document.getElementById('reporte-estatus').value;
+
+                    const tbody = document.querySelector('#table-reportes tbody');
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Generando análisis de cartera...</td></tr>';
+
+                    setTimeout(() => {
+                        let resultados = [];
+                        FinanceApp.state.creditos.forEach(cr => {
+                            const cli = FinanceApp.state.clientes.find(c => c.id === cr.clienteId);
+                            cr.fichas.forEach(f => {
+                                const vencida = !f.pagada && new Date(f.fecha) < new Date();
+                                const estatusFicha = f.pagada ? 'Pagado' : (vencida ? 'Vencido' : 'Pendiente');
+
+                                let coincideFecha = true;
+                                if (fecha) {
+                                    if (estatus === 'pagados') {
+                                        coincideFecha = f.fechaPago === fecha;
+                                    } else {
+                                        coincideFecha = f.fecha === fecha;
+                                    }
+                                }
+
+                                let coincideEstatus = false;
+                                if (estatus === 'todos') coincideEstatus = true;
+                                if (estatus === 'vencidos') coincideEstatus = estatusFicha === 'Vencido';
+                                if (estatus === 'pagados') coincideEstatus = estatusFicha === 'Pagado';
+
+                                if (coincideFecha && coincideEstatus) {
+                                    resultados.push({
+                                        folio: cr.id,
+                                        cliente: `${cli.nombre} ${cli.apellido}`,
+                                        venc: f.fecha,
+                                        total: f.total,
+                                        saldo: cr.total - cr.pagado,
+                                        estatus: estatusFicha
+                                    });
+                                }
+                            });
+                        });
+
+                        tbody.innerHTML = resultados.map(r => `
+                            <tr>
+                                <td>${r.folio}</td>
+                                <td>${r.cliente}</td>
+                                <td>${r.venc}</td>
+                                <td>$${r.total}</td>
+                                <td>$${r.saldo}</td>
+                                <td><span class="badge ${r.estatus === 'Vencido' ? 'badge-danger' : (r.estatus === 'Pagado' ? 'badge-success' : 'badge-warning')}">${r.estatus}</span></td>
+                            </tr>
+                        `).join('');
+                        if (resultados.length === 0) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No hay datos coincidentes</td></tr>';
+                    }, 500);
+                },
+
+                guardarConfig() {
+                    const mora = parseInt(document.getElementById('config-mora').value) || 0;
+                    const tasaDiaria = parseInt(document.getElementById('config-tasa-diaria').value) || 0;
+                    const tasaSemanal = parseInt(document.getElementById('config-tasa-semanal').value) || 0;
+                    FinanceApp.state.config.moraPorDia = mora;
+                    FinanceApp.state.config.tasaDiaria = tasaDiaria;
+                    FinanceApp.state.config.tasaSemanal = tasaSemanal;
+                    FinanceApp.utils.toast("Configuración guardada", "⚙️");
+                },
+
+                reestConsultar() {
+                    const folio = document.getElementById('busqueda-reestructura').value.toUpperCase();
+                    const cr = FinanceApp.state.creditos.find(c => c.id === folio);
+                    if (!cr) return FinanceApp.utils.toast("Crédito no encontrado", "⚠️");
+
+                    this.currentReest = cr;
+                    document.getElementById('reest-detalle').style.display = 'block';
+                    const saldo = cr.total - cr.pagado;
+                    document.getElementById('reest-info-actual').innerHTML = `
+                        <p>Capital Inicial: <strong>$${cr.monto}</strong></p>
+                        <p>Pagado: <strong style="color:var(--success)">$${cr.pagado}</strong></p>
+                        <p>Saldo Pendiente: <strong style="color:var(--danger)">$${saldo}</strong></p>
+                    `;
+                    document.getElementById('reest-nuevo-monto').value = Math.round(saldo * 0.9);
+                    document.getElementById('reest-nuevo-plazo').value = 10;
+                },
+
+                reestAplicar() {
+                    const cr = this.currentReest;
+                    const nMonto = parseInt(document.getElementById('reest-nuevo-monto').value);
+                    const nPlazo = parseInt(document.getElementById('reest-nuevo-plazo').value);
+
+                    cr.estatus = 'Reestructurado';
+                    const id = `CR-R${FinanceApp.state.creditos.length + 1}`;
+                    const cuota = Math.round(nMonto / nPlazo);
+                    const newCr = { id, clienteId: cr.clienteId, monto: nMonto, interesTotal: 0, total: nMonto, cuota, pagado: 0, totalFichas: nPlazo, fichas: [] };
+
+                    newCr.fichas = Array(nPlazo).fill().map((_, i) => {
+                        const d = new Date(); d.setDate(d.getDate() + (i * 7));
+                        return { num: i + 1, fecha: d.toISOString().split('T')[0], hora: '--:--', folio: `F-${id}-${i + 1}`, capital: cuota, interes: 0, total: cuota, abono: 0, mora: 0, saldoCap: nMonto - (i * cuota), pagada: false };
+                    });
+
+                    FinanceApp.state.creditos.push(newCr);
+                    FinanceApp.utils.showSuccess("Operación Exitosa", `Crédito reestructurado como ${id}.`);
+                    FinanceApp.ui.showScreen('gestion-fichas');
+                    document.getElementById('busqueda-fichas').value = id;
+                    FinanceApp.actions.consultarFichas();
+                }
+            },
+
+            modals: {
+                open(id) { document.getElementById(id).classList.add('active'); },
+                close(id) { document.getElementById(id).classList.remove('active'); }
+            },
+
+            utils: {
+                calcularTotalCobrado() {
+                    const today = new Date().toISOString().split('T')[0];
+                    return FinanceApp.state.abonosHistorial
+                        .filter(a => a.fecha === today)
+                        .reduce((sum, a) => sum + a.total, 0);
+                },
+                toast(m, i) {
+                    const t = document.getElementById('toast');
+                    document.getElementById('toast-text').innerText = m;
+                    document.getElementById('toast-icon').innerText = i;
+                    t.classList.add('active');
+                    setTimeout(() => t.classList.remove('active'), 3000);
+                },
+                showSuccess(t, m) {
+                    document.getElementById('success-title').innerText = t;
+                    document.getElementById('success-message').innerText = m;
+                    FinanceApp.modals.open('modal-success');
+                }
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => FinanceApp.init());
+        const showScreen = (id) => FinanceApp.ui.showScreen(id);
+    </script>
+</body>
+
+</html>

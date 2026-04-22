@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-softBeige: #f5f1e6;
+  --color-primaryBlue: #0284c7;
+  --color-primaryBlueDark: #0369a1;
+  --color-primaryBlueLight: #e0f2fe;
+  --color-textDark: #1e293b;
+  --color-textMuted: #64748b;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-softBeige text-textDark;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-semibold transition-colors duration-200 cursor-pointer gap-2;
+  }
+  .btn-primary {
+    @apply bg-primaryBlue text-white hover:bg-primaryBlueDark;
+  }
+  .btn-light {
+    @apply bg-white border border-gray-200 text-textDark hover:bg-gray-50;
+  }
+  .card {
+    @apply bg-white p-6 rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md;
+  }
+  .form-input,
+  .form-select {
+    @apply w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryBlue/50 focus:border-primaryBlue bg-gray-50 transition-all;
+  }
+  .form-label {
+    @apply block text-sm font-medium text-textDark mb-1;
+  }
+  .badge {
+    @apply px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide;
+  }
+  .badge-success { @apply bg-green-100 text-green-800; }
+  .badge-warning { @apply bg-yellow-100 text-yellow-800; }
+  .badge-danger { @apply bg-red-100 text-red-800; }
+}
+
+@media print {
+  @page {
+    size: letter;
+    margin: 10mm;
+  }
+}
