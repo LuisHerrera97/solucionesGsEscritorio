@@ -31,29 +31,25 @@ export const API_ENDPOINTS_GENERAL = {
   FERIADOS: '/api/general/feriados',
 } as const;
 
-export const API_ENDPOINTS_FINANZAS = {
-  CLIENTES: '/api/finanzas/clientes',
-  CLIENTE_BY_ID: '/api/finanzas/clientes/{id}',
-  CLIENTE_CREDITOS: '/api/finanzas/clientes/{id}/creditos',
-  CREDITOS: '/api/finanzas/creditos',
-  CREDITO_BY_ID: '/api/finanzas/creditos/{id}',
-  ABONO_FICHA: '/api/finanzas/creditos/{creditoId}/fichas/{numeroFicha}/abonos',
-  MULTA_FICHA: '/api/finanzas/creditos/{creditoId}/fichas/{numeroFicha}/multas',
-  REESTRUCTURAR: '/api/finanzas/creditos/{creditoId}/reestructura',
-  CONDONAR_INTERES: '/api/finanzas/creditos/{creditoId}/fichas/{numeroFicha}/condonacion',
-  CONDONAR_INTERES_MONTO: '/api/finanzas/creditos/{creditoId}/condonacion-monto',
-  ACTUALIZAR_OBSERVACION: '/api/finanzas/creditos/{creditoId}/observacion',
-  APLICAR_MORA: '/api/finanzas/creditos/aplicar-mora',
-  CREDITO_MOVIMIENTOS: '/api/finanzas/creditos/{id}/movimientos',
-  CAJA_TURNO: '/api/finanzas/caja/turno',
-  CAJA_MOVIMIENTOS: '/api/finanzas/caja/movimientos',
-  CAJA_LIQUIDACIONES_RESUMEN: '/api/finanzas/caja/liquidaciones/resumen',
-  CAJA_CORTE: '/api/finanzas/caja/corte',
-  CAJA_CIERRE_DIARIO: '/api/finanzas/caja/cierre-diario',
-  CAJA_MOVIMIENTOS_MARCAR_RECIBIDO: '/api/finanzas/caja/movimientos/marcar-recibido-caja',
-  CORTES: '/api/finanzas/cortes',
-  REPORTES: '/api/finanzas/reportes',
-  DASHBOARD_RESUMEN: '/api/finanzas/dashboard/resumen',
+/** Rutas HTTP del módulo de créditos en el backend (`api/creditos`). */
+export const API_ENDPOINTS_CREDITOS = {
+  CLIENTES: '/api/creditos/clientes',
+  CLIENTE_BY_ID: '/api/creditos/clientes/{id}',
+  CLIENTE_CREDITOS: '/api/creditos/clientes/{id}/creditos',
+  CREDITOS: '/api/creditos/creditos',
+  CREDITO_BY_ID: '/api/creditos/creditos/{id}',
+  ABONO_FICHA: '/api/creditos/creditos/{creditoId}/fichas/{numeroFicha}/abonos',
+  MULTA_FICHA: '/api/creditos/creditos/{creditoId}/fichas/{numeroFicha}/multas',
+  REESTRUCTURAR: '/api/creditos/creditos/{creditoId}/reestructura',
+  CONDONAR_INTERES: '/api/creditos/creditos/{creditoId}/fichas/{numeroFicha}/condonacion',
+  CONDONAR_INTERES_MONTO: '/api/creditos/creditos/{creditoId}/condonacion-monto',
+  ACTUALIZAR_OBSERVACION: '/api/creditos/creditos/{creditoId}/observacion',
+  APLICAR_MORA: '/api/creditos/creditos/aplicar-mora',
+  CREDITO_MOVIMIENTOS: '/api/creditos/creditos/{id}/movimientos',
+  CORTES: '/api/creditos/cortes',
+  REPORTES: '/api/creditos/reportes',
+  DASHBOARD_RESUMEN: '/api/creditos/dashboard/resumen',
+  DASHBOARD_MOVIMIENTOS: '/api/creditos/dashboard/movimientos',
 } as const;
 
 export const API_ENDPOINTS_COBRANZA = {
@@ -68,4 +64,5 @@ export const API_ENDPOINTS_COBRANZA = {
   LIQUIDACIONES_COBRADOR_MOVIMIENTOS_PENDIENTES: '/api/cobranza/liquidaciones/cobradores/{cobradorId}/movimientos-pendientes',
   LIQUIDACIONES_CONFIRMAR: '/api/cobranza/liquidaciones/{id}/confirmar',
   LIQUIDACIONES_RECHAZAR: '/api/cobranza/liquidaciones/{id}/rechazar',
+  LIQUIDACIONES_MARCAR_RECIBIDO_CAJA: '/api/cobranza/liquidaciones/movimientos/marcar-recibido-caja',
 } as const;

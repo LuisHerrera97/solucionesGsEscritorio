@@ -93,6 +93,8 @@ export type PaginaDto = {
   idModulo: Guid;
   nombreModulo: string;
   activo: boolean;
+  /** Si no viene del API (datos antiguos), se trata como true. */
+  enMenu?: boolean | null;
   tienePermiso: boolean;
   fechaCreacion: string;
   orden: number;

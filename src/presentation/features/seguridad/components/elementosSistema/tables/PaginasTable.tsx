@@ -25,6 +25,7 @@ export const PaginasTable = ({ paginas, isLoading, isError, onEditar, onEliminar
               <th className="py-3 px-4 text-left font-semibold">Ruta</th>
               <th className="py-3 px-4 text-left font-semibold">Módulo</th>
               <th className="py-3 px-4 text-center font-semibold">Orden</th>
+              <th className="py-3 px-4 text-center font-semibold">Menú</th>
               <th className="py-3 px-4 text-center font-semibold">Activo</th>
               <th className="py-3 px-4 text-right font-semibold">Acciones</th>
             </tr>
@@ -37,6 +38,11 @@ export const PaginasTable = ({ paginas, isLoading, isError, onEditar, onEliminar
                 <td className="py-3 px-4 text-textMuted">{p.ruta}</td>
                 <td className="py-3 px-4 text-textMuted">{p.nombreModulo}</td>
                 <td className="py-3 px-4 text-center">{p.orden}</td>
+                <td className="py-3 px-4 text-center">
+                  <span className={`badge ${p.enMenu !== false ? 'badge-success' : 'badge-secondary'}`}>
+                    {p.enMenu !== false ? 'Sí' : 'No'}
+                  </span>
+                </td>
                 <td className="py-3 px-4 text-center">
                   <span className={`badge ${p.activo ? 'badge-success' : 'badge-secondary'}`}>{p.activo ? 'Sí' : 'No'}</span>
                 </td>

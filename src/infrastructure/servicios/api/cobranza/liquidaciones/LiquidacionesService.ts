@@ -3,7 +3,7 @@ import { ApiService } from '../../../../http/apiService';
 import type { ApiResponse } from '../../../../../domain/shared/ApiResponse';
 import { unwrapApiResponse } from '../../../../http/unwrapApiResponse';
 import type { CrearLiquidacionCobranzaRequestDto, LiquidacionCobranzaDto, LiquidacionPendienteResumenDto } from '../../../../../domain/cobranza/liquidaciones/types';
-import type { MovimientoCajaDto, ResumenLiquidacionesCajaDto } from '../../../../../domain/finanzas/caja/types';
+import type { MarcarRecibidoCajaRequestDto, MovimientoCajaDto, ResumenLiquidacionesCajaDto } from '../../../../../domain/creditos/caja/types';
 import { withQueryParams, withRouteParams } from '../../../../utils/url';
 
 export const LiquidacionesService = {
@@ -43,5 +43,9 @@ export const LiquidacionesService = {
   rechazar: async (id: string): Promise<void> => {
     const response = await ApiService.post({ url: API_ENDPOINTS_COBRANZA.LIQUIDACIONES_RECHAZAR.replace('{id}', id) });
     return unwrapApiResponse(response.data as ApiResponse<void>);
+  },
+  marcarMovimientosRecibidoCaja: async (payload: MarcarRecibidoCajaRequestDto): Promise<{ marcados: number }> => {
+    const response = await ApiService.post({ url: API_ENDPOINTS_COBRANZA.LIQUIDACIONES_MARCAR_RECIBIDO_CAJA, data: payload });
+    return unwrapApiResponse(response.data as ApiResponse<{ marcados: number }>);
   },
 };

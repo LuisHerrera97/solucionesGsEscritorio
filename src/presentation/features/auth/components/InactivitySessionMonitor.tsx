@@ -74,4 +74,6 @@ export const InactivitySessionMonitor = () => {
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [isAuthenticated, checkExpired, session]);
+
+  return null;
 };

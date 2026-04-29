@@ -16,7 +16,7 @@ export const LoginBrandPanel = () => {
         <div className="mt-8 space-y-3 text-white/90">
           <div className="text-sm">Acceso seguro</div>
           <div className="text-sm">Gestión de clientes y créditos</div>
-          <div className="text-sm">Caja, reportes y cortes</div>
+          <div className="text-sm">Reportes y cortes</div>
         </div>
       </div>
       <div className="text-xs text-white/70">© {new Date().getFullYear()} Financiera GS</div>

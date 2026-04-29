@@ -126,6 +126,9 @@ export const PermisosEditor = ({ perfilId, menu }: { perfilId: Guid; menu: Modul
                         <input type="checkbox" checked={p.tienePermiso} onChange={(e) => onTogglePagina(m.id, p.id, e.target.checked)} />
                         {p.nombre} <span className="text-xs font-normal text-textMuted">({p.clave})</span>
                         <span className="text-xs text-textMuted">· {p.ruta}</span>
+                        {p.enMenu === false && (
+                          <span className="text-xs font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">No menú</span>
+                        )}
                       </label>
                       {(p.botones ?? []).length > 0 && (
                         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 pl-5">

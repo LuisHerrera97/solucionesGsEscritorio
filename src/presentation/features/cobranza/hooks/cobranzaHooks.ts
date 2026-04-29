@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppContainer } from '../../../../infrastructure/di/useAppContainer';
 import { LiquidacionesService } from '../../../../infrastructure/servicios/api/cobranza/liquidaciones/LiquidacionesService';
 import type { CrearLiquidacionCobranzaRequestDto } from '../../../../domain/cobranza/liquidaciones/types';
-import type { MovimientoCajaDto, ResumenLiquidacionesCajaDto } from '../../../../domain/finanzas/caja/types';
+import type { MarcarRecibidoCajaRequestDto, MovimientoCajaDto, ResumenLiquidacionesCajaDto } from '../../../../domain/creditos/caja/types';
 
 export const usePendientesQuery = (params: { busqueda?: string; page: number; pageSize: number; zonaId?: string }) => {
   const { services } = useAppContainer();
@@ -36,7 +36,7 @@ export const useCrearLiquidacionMutation = () => {
     mutationFn: (payload: CrearLiquidacionCobranzaRequestDto) => LiquidacionesService.crear(payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['cobranza', 'liquidaciones'] });
-      await queryClient.invalidateQueries({ queryKey: ['finanzas', 'caja', 'turno'] });
+      await queryClient.invalidateQueries({ queryKey: ['creditos', 'dashboard', 'movimientos'] });
       await queryClient.invalidateQueries({ queryKey: ['cobranza', 'pendientes'] });
       await queryClient.invalidateQueries({ queryKey: ['cobranza', 'liquidaciones', 'cobradores'] });
     },
@@ -78,8 +78,7 @@ export const useConfirmarLiquidacionMutation = () => {
     mutationFn: (id: string) => LiquidacionesService.confirmar(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['cobranza', 'liquidaciones'] });
-      await queryClient.invalidateQueries({ queryKey: ['finanzas', 'caja', 'turno'] });
-      await queryClient.invalidateQueries({ queryKey: ['finanzas', 'caja', 'movimientos'] });
+      await queryClient.invalidateQueries({ queryKey: ['creditos', 'dashboard', 'movimientos'] });
       await queryClient.invalidateQueries({ queryKey: ['cobranza', 'liquidaciones', 'cobradores'] });
     },
   });
@@ -92,6 +91,17 @@ export const useRechazarLiquidacionMutation = () => {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['cobranza', 'liquidaciones'] });
       await queryClient.invalidateQueries({ queryKey: ['cobranza', 'pendientes'] });
+      await queryClient.invalidateQueries({ queryKey: ['cobranza', 'liquidaciones', 'cobradores'] });
+    },
+  });
+};
+
+export const useMarcarMovimientosRecibidoCajaMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: MarcarRecibidoCajaRequestDto) => LiquidacionesService.marcarMovimientosRecibidoCaja(payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['creditos', 'dashboard', 'movimientos'] });
       await queryClient.invalidateQueries({ queryKey: ['cobranza', 'liquidaciones', 'cobradores'] });
     },
   });

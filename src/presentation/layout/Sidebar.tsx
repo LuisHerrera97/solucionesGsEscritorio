@@ -27,9 +27,8 @@ const Sidebar = ({
   const getModuleIcon = (clave: string) => {
     const normalized = (clave ?? '').toUpperCase();
     if (normalized === 'GENERAL') return <Home size={16} />;
-    if (normalized === 'CREDITOS') return <DollarSign size={16} />;
+    if (normalized === 'CREDITOS') return <Wallet size={16} />;
     if (normalized === 'COBRANZA') return <ClipboardList size={16} />;
-    if (normalized === 'FINANZAS') return <Wallet size={16} />;
     if (normalized === 'SEGURIDAD') return <Settings size={16} />;
     return <Settings size={16} />;
   };
@@ -41,7 +40,6 @@ const Sidebar = ({
     if (ruta.startsWith('/creditos')) return <DollarSign size={20} />;
     if (ruta.startsWith('/pendientes')) return <AlertCircle size={20} />;
     if (ruta.startsWith('/cobranza')) return <ClipboardList size={20} />;
-    if (ruta.startsWith('/caja')) return <Wallet size={20} />;
     if (ruta.startsWith('/cortes')) return <Scissors size={20} />;
     if (ruta.startsWith('/seguridad')) return <Settings size={20} />;
     if (ruta.startsWith('/general')) return <Settings size={20} />;
@@ -51,11 +49,20 @@ const Sidebar = ({
   const sections = (menu ?? [])
     .filter((m) => m.activo && m.tienePermiso)
     .map((m) => {
-      const items = (m.paginas ?? []).filter((p) => p.activo && p.tienePermiso).map((p) => ({
-        icon: getPageIcon(p.ruta),
-        label: p.nombre,
-        path: p.ruta,
-      }));
+      const rutasVistas = new Set<string>();
+      const items = (m.paginas ?? [])
+        .filter((p) => p.activo && p.tienePermiso && p.enMenu !== false)
+        .filter((p) => {
+          const key = (p.ruta ?? '').trim();
+          if (!key || rutasVistas.has(key)) return false;
+          rutasVistas.add(key);
+          return true;
+        })
+        .map((p) => ({
+          icon: getPageIcon(p.ruta),
+          label: p.nombre,
+          path: p.ruta,
+        }));
       return {
         title: m.nombre,
         icon: getModuleIcon(m.clave),
@@ -116,7 +123,7 @@ const Sidebar = ({
           </NavLink>
         </div>
         {sections.map((section) => {
-          const items = section.title === 'General' ? section.items.filter((i) => i.path !== '/') : section.items;
+          const items = section.items.filter((i) => i.path !== '/');
           const isOpen = openSection === section.title;
           const hasActive = section.items.some((item) => isItemActive(item.path));
           return (

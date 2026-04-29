@@ -21,6 +21,7 @@ export const PaginaForm = ({
   const [idModulo, setIdModulo] = useState<Guid>((initial?.idModulo ?? modulos[0]?.id ?? ('' as Guid)) as Guid);
   const [orden, setOrden] = useState<NumberInputValue>(initial?.orden ?? 1);
   const [activo, setActivo] = useState<boolean>(initial?.activo ?? true);
+  const [enMenu, setEnMenu] = useState<boolean>(initial?.enMenu ?? true);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +36,7 @@ export const PaginaForm = ({
       nombreModulo: modulo?.nombre ?? initial?.nombreModulo ?? '',
       orden: asNumber(orden),
       activo,
+      enMenu,
       fechaCreacion: initial?.fechaCreacion ?? new Date().toISOString(),
       tienePermiso: initial?.tienePermiso ?? false,
       botones: initial?.botones ?? [],
@@ -74,9 +76,15 @@ export const PaginaForm = ({
           <label className="form-label">Orden</label>
           <input type="number" min={1} className="form-input" value={numberInputDisplay(orden)} onChange={(e) => setOrden(parseNumberInput(e.target.value))} />
         </div>
-        <div className="flex items-center gap-2 pt-7">
-          <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} />
-          <span className="text-sm text-textDark">Activo</span>
+        <div className="flex flex-col gap-2 pt-5">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} />
+            <span className="text-sm text-textDark">Activo</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={enMenu} onChange={(e) => setEnMenu(e.target.checked)} />
+            <span className="text-sm text-textDark">Mostrar en menú</span>
+          </label>
         </div>
       </div>
       <div className="flex justify-end gap-2 pt-2">

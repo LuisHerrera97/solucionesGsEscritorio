@@ -28,7 +28,7 @@ import { ConfirmDialog } from '../../../../infrastructure/ui/components/ConfirmD
 import { Alert } from '../../../../infrastructure/ui/components/Alert';
 import { getErrorMessage } from '../../../../infrastructure/utils/getErrorMessage';
 import { formatCalendarDateFromApi } from '../../../../shared/date/calendarDate';
-import { useMarcarMovimientosRecibidoCajaMutation } from '../../finanzas/hooks/finanzasHooks';
+import { useMarcarMovimientosRecibidoCajaMutation } from '../hooks/cobranzaHooks';
 
 const GestionLiquidacionesPage = () => {
   const { user } = useAuth();

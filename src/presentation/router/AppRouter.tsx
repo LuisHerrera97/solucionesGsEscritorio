@@ -4,20 +4,19 @@ import LoginPage from '../features/auth/pages/LoginPage';
 import ProtectedRoute from './ProtectedRoute';
 
 
-import Caja from '../features/finanzas/pages/Caja';
-import Clientes from '../features/finanzas/pages/Clientes';
+import Clientes from '../features/creditos/pages/Clientes';
 import Cobranza from '../features/cobranza/pages/Cobranza';
-import Cortes from '../features/finanzas/pages/Cortes';
-import Creditos from '../features/finanzas/pages/Creditos';
-import Dashboard from '../features/finanzas/pages/Dashboard';
-import DetalleCredito from '../features/finanzas/pages/DetalleCredito';
-import EstadoCuentaCredito from '../features/finanzas/pages/EstadoCuentaCredito';
-import CondonacionCredito from '../features/finanzas/pages/CondonacionCredito';
-import NuevoCredito from '../features/finanzas/pages/NuevoCredito';
+import Cortes from '../features/creditos/pages/Cortes';
+import Creditos from '../features/creditos/pages/Creditos';
+import HomePage from '../features/home/pages/Home';
+import DetalleCredito from '../features/creditos/pages/DetalleCredito';
+import EstadoCuentaCredito from '../features/creditos/pages/EstadoCuentaCredito';
+import CondonacionCredito from '../features/creditos/pages/CondonacionCredito';
+import NuevoCredito from '../features/creditos/pages/NuevoCredito';
 import Pendientes from '../features/cobranza/pages/Pendientes';
 import Liquidaciones from '../features/cobranza/pages/Liquidaciones';
 import GestionLiquidaciones from '../features/cobranza/pages/GestionLiquidaciones';
-import Reestructura from '../features/finanzas/pages/Reestructura';
+import Reestructura from '../features/creditos/pages/Reestructura';
 import ConfiguracionSistema from '../features/general/pages/ConfiguracionSistema';
 import ZonasCobranza from '../features/general/pages/ZonasCobranza';
 import Auditoria from '../features/general/pages/Auditoria';
@@ -38,16 +37,6 @@ const AppRouter = () => {
             <ProtectedRoute>
               <Layout>
                 <Clientes />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/caja"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <Caja />
               </Layout>
             </ProtectedRoute>
           }
@@ -286,7 +275,7 @@ const AppRouter = () => {
         element={
           <ProtectedRoute>
             <Layout>
-              <Dashboard />
+              <HomePage />
             </Layout>
           </ProtectedRoute>
         }
