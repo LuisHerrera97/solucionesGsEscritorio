@@ -19,7 +19,7 @@ export const ReestructuraInfoCards = ({ credito, saldoPendiente }: ReestructuraI
       </div>
       <div className="card">
         <p className="text-xs uppercase text-textMuted tracking-wide">Crédito actual</p>
-        <p className="text-lg font-semibold text-textDark mt-1">{credito.id}</p>
+        <p className="text-lg font-semibold text-textDark mt-1">{credito.folio?.trim() || '—'}</p>
         <p className="text-sm text-textMuted">
           Total: ${credito.total.toLocaleString()} · Abonos aplicados: ${credito.pagado.toLocaleString()}
         </p>

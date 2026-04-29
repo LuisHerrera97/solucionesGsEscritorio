@@ -13,8 +13,10 @@ import { HistorialPagos } from '../components/detalleCredito/HistorialPagos';
 import { PagoCuotaModal } from '../components/detalleCredito/PagoCuotaModal';
 import { PenalizacionModal } from '../components/detalleCredito/PenalizacionModal';
 import { ConfirmDialog } from '../../../../infrastructure/ui/components/ConfirmDialog';
+import { ModalShell } from '../../../../infrastructure/ui/components/ModalShell';
 import { useAuth } from '../../auth/context/useAuth';
 import { parseCalendarDateFromApi } from '../../../../shared/date/calendarDate';
+import { buildTicketHtml } from '../../../../shared/ticket/buildTicketHtml';
 
 const DetalleCredito = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +34,7 @@ const DetalleCredito = () => {
   const [medioPago, setMedioPago] = useState<MedioPago>('Efectivo');
   const [montoEfectivo, setMontoEfectivo] = useState<NumberInputValue>(0);
   const [montoTransferencia, setMontoTransferencia] = useState<NumberInputValue>(0);
+  const [ticketModal, setTicketModal] = useState<{ concepto: string; total: number; numeroFicha: number } | null>(null);
 
   const [obsEditMode, setObsEditMode] = useState(false);
   const [obsText, setObsText] = useState('');
@@ -120,6 +123,11 @@ const DetalleCredito = () => {
         montoTransferencia: medioPago === 'Mixto' ? asNumber(montoTransferencia) : undefined,
       });
       toast.success('Pago registrado');
+      setTicketModal({
+        concepto: modalType === 'abono' ? 'Abono de ficha' : 'Pago de ficha',
+        total: montoAbono,
+        numeroFicha: modalPago.numFicha,
+      });
       setModalPago(null);
       setModalType(null);
       setMonto(0);
@@ -162,6 +170,11 @@ const DetalleCredito = () => {
           {
             onSuccess: () => {
               toast.success('Penalización aplicada correctamente');
+              setTicketModal({
+                concepto: 'Multa aplicada',
+                total: asNumber(mora),
+                numeroFicha: modalPago.numFicha,
+              });
               setModalPago(null);
               setMora(0);
               setModalType(null);
@@ -231,7 +244,34 @@ const DetalleCredito = () => {
   const hayInteresPorCondonar = interesTotalPendiente > 0;
   const creditoVigente = credito.estatus === 'Activo';
   const canReestructurar = canBoton('CREDITO_REESTRUCTURAR') && creditoVigente;
-  const canAbonar = canBoton('CREDITO_ABONAR_FICHA');
+  const canPagarFicha = canBoton('CREDITO_PAGAR_FICHA') || canBoton('CREDITO_ABONAR_FICHA');
+  const canAbonarParcial = canBoton('CREDITO_ABONAR_FICHA');
+  const canPenalizarFicha = canBoton('CREDITO_PENALIZAR_FICHA') || canBoton('CREDITO_ABONAR_FICHA');
+  const canCondonarInteresFicha = canBoton('CREDITO_CONDONAR_INTERES');
+  const printTicket = () => {
+    if (!ticketModal || !credito) return;
+    const now = new Date();
+    const html = buildTicketHtml({
+      fecha: now.toLocaleDateString(),
+      hora: now.toLocaleTimeString(),
+      cliente: `${credito.clienteNombre ?? ''} ${credito.clienteApellido ?? ''}`.trim(),
+      folio: credito.folio,
+      concepto: ticketModal.concepto,
+      ficha: `#${ticketModal.numeroFicha}`,
+      total: ticketModal.total,
+    });
+    const electronApi = (window as any).ipcRenderer;
+    if (electronApi?.printTicketHtml) {
+      void electronApi.printTicketHtml(html);
+      return;
+    }
+    const win = window.open('', '_blank', 'width=380,height=640');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+  };
 
   return (
     <div className="space-y-6">
@@ -244,8 +284,8 @@ const DetalleCredito = () => {
           <button className="btn btn-light" onClick={() => navigate(`/creditos/${credito.id}/estado-cuenta`)}>
             Estado de cuenta
           </button>
-          {hayInteresPorCondonar && (
-            <button className="btn btn-light" onClick={() => navigate(`/creditos/${credito.id}/condonacion`)}>
+          {hayInteresPorCondonar && canCondonarInteresFicha && (
+            <button type="button" className="btn btn-light" onClick={() => navigate(`/creditos/${credito.id}/condonacion`)}>
               Condonar interés
             </button>
           )}
@@ -319,13 +359,13 @@ const DetalleCredito = () => {
       <FichasEstadoCuenta
         fichas={fichas}
         fichaSiguienteNum={fichaSiguiente?.num}
-        onRegistrarPago={
-          canAbonar
-            ? (numFicha, pendiente, fechaFicha, onlyMora) => {
+        onPagarFicha={
+          canPagarFicha
+            ? (numFicha, pendiente) => {
                 setModalPago({ numFicha, pendiente });
-                setModalType(onlyMora ? 'penalizacion' : 'pago');
-                setMonto(onlyMora ? 0 : pendiente);
-                setMora(onlyMora ? calcularMoraSugerida(fechaFicha) : 0);
+                setModalType('pago');
+                setMonto(pendiente);
+                setMora(0);
                 setMedioPago('Efectivo');
                 setMontoEfectivo(0);
                 setMontoTransferencia(0);
@@ -333,7 +373,7 @@ const DetalleCredito = () => {
             : undefined
         }
         onAbonar={
-          canAbonar
+          canAbonarParcial
             ? (numFicha, pendiente) => {
                 setModalPago({ numFicha, pendiente });
                 setModalType('abono');
@@ -345,7 +385,20 @@ const DetalleCredito = () => {
               }
             : undefined
         }
-        onCondonarInteres={hayInteresPorCondonar ? handleCondonarInteres : undefined}
+        onPenalizar={
+          canPenalizarFicha
+            ? (numFicha, pendiente, fechaFicha) => {
+                setModalPago({ numFicha, pendiente });
+                setModalType('penalizacion');
+                setMonto(0);
+                setMora(calcularMoraSugerida(fechaFicha));
+                setMedioPago('Efectivo');
+                setMontoEfectivo(0);
+                setMontoTransferencia(0);
+              }
+            : undefined
+        }
+        onCondonarInteres={hayInteresPorCondonar && canCondonarInteresFicha ? handleCondonarInteres : undefined}
       />
 
       <PagoCuotaModal
@@ -386,6 +439,29 @@ const DetalleCredito = () => {
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
       />
+
+      {ticketModal && (
+        <ModalShell
+          open
+          onClose={() => setTicketModal(null)}
+          title="Pago registrado con éxito"
+          subtitle={`${ticketModal.concepto} · Ficha #${ticketModal.numeroFicha} · $${ticketModal.total.toLocaleString()}`}
+          maxWidthClassName="max-w-sm"
+          titleId="detalle-credito-ticket-modal-titulo"
+          footer={
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button type="button" className="btn btn-primary w-full sm:flex-1" onClick={printTicket}>
+                Imprimir ticket
+              </button>
+              <button type="button" className="btn btn-light w-full sm:flex-1" onClick={() => setTicketModal(null)}>
+                Cerrar
+              </button>
+            </div>
+          }
+        >
+          <p className="text-sm text-textMuted">Puedes reimprimir el ticket más tarde desde el historial de pagos.</p>
+        </ModalShell>
+      )}
 
       <HistorialPagos creditoId={credito.id} />
     </div>

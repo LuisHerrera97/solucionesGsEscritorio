@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -58,3 +58,18 @@ app.on('activate', () => {
 });
 
 app.whenReady().then(createWindow);
+
+ipcMain.handle('print-ticket-html', async (_event, html: string) => {
+  const printWindow = new BrowserWindow({
+    show: false,
+    webPreferences: {
+      sandbox: true,
+    },
+  });
+  const content = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+  await printWindow.loadURL(content);
+  await new Promise<void>((resolve) => {
+    printWindow.webContents.print({ printBackground: true }, () => resolve());
+  });
+  printWindow.close();
+});

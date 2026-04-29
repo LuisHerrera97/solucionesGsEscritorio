@@ -2,15 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { ConfirmDialog } from '../../../../infrastructure/ui/components/ConfirmDialog';
+import { ModalShell } from '../../../../infrastructure/ui/components/ModalShell';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { Cliente } from '../../../../domain/creditos/types';
 import { useDebouncedValue } from '../../../../infrastructure/hooks/useDebouncedValue';
 import StatusPanel from '../../../../infrastructure/ui/components/StatusPanel';
 import { getErrorMessage } from '../../../../infrastructure/utils/getErrorMessage';
+import { asNumber, numberInputDisplay, parseNumberInput, type NumberInputValue } from '../../../../infrastructure/utils/numberInput';
 import { useAuth } from '../../auth/context/useAuth';
 import { useZonasCobranzaQuery } from '../../general/hooks/generalHooks';
 import {
   useActualizarClienteMutation,
+  useAbonarFichasVigentesCreditoMutation,
   useClientesQuery,
   useCrearClienteMutation,
   useEliminarClienteMutation,
@@ -22,11 +25,15 @@ import { ClientesSearchBar } from '../components/clientes/ClientesSearchBar';
 import { useCobranzaZonaFiltro } from '../../cobranza/hooks/useCobranzaZonaFiltro';
 import { CobranzaZonaFiltroPanel } from '../../cobranza/components/cobranza/CobranzaZonaFiltroPanel';
 import { ClientesService } from '../../../../infrastructure/servicios/api/creditos/ClientesService';
+import { CreditosService } from '../../../../infrastructure/servicios/api/creditos/CreditosService';
+import { buildTicketHtml } from '../../../../shared/ticket/buildTicketHtml';
+import { fichasNoPagadasOrdenadasParaPagoMultiples } from '../../../../shared/creditos/fichasPagoOrden';
 
 const PAGE_SIZE = 12;
 const BUSCAR_DEBOUNCE_MS = 300;
 
 const PERM_CLIENTE_TODAS_ZONAS = 'CLIENTE_TODAS_ZONAS';
+type MedioPagoCobro = 'Efectivo' | 'Transferencia' | 'Mixto';
 
 const clienteDraftVacio = (): ClienteDraft => ({
   nombre: '',
@@ -53,6 +60,7 @@ const Clientes = () => {
   /* Quien puede crear clientes puede editarlos/eliminarlos; o permisos dedicados si existen en BD */
   const puedeEditar = canBoton('CLIENTE_EDITAR') || canBoton('CLIENTE_CREAR');
   const puedeEliminar = canBoton('CLIENTE_ELIMINAR') || canBoton('CLIENTE_CREAR');
+  const puedePagarFichasVigentesCliente = canBoton('CREDITO_PAGAR_FICHA') || canBoton('CREDITO_ABONAR_FICHA');
 
   const [searchParams] = useSearchParams();
   const qFromUrl = searchParams.get('q')?.trim() ?? '';
@@ -84,11 +92,18 @@ const Clientes = () => {
   const [clienteDraft, setClienteDraft] = useState<ClienteDraft>(clienteDraftVacio);
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Cliente | null>(null);
+  const [creditoPagoSeleccionado, setCreditoPagoSeleccionado] = useState<{ id: string; folio: string } | null>(null);
+  const [cantidadFichasPago, setCantidadFichasPago] = useState<NumberInputValue>(1);
+  const [medioPago, setMedioPago] = useState<MedioPagoCobro>('Efectivo');
+  const [montoEfectivo, setMontoEfectivo] = useState<NumberInputValue>(0);
+  const [montoTransferencia, setMontoTransferencia] = useState<NumberInputValue>(0);
+  const [ticketPagoFichas, setTicketPagoFichas] = useState<{ folio: string; cantidad: number; total: number } | null>(null);
 
   const clientesQuery = useClientesQuery({ page, pageSize: PAGE_SIZE, buscar: buscarApi, zonaId: zonaIdParam });
   const createMutation = useCrearClienteMutation();
   const updateMutation = useActualizarClienteMutation();
   const deleteMutation = useEliminarClienteMutation();
+  const abonarFichasVigentesMutation = useAbonarFichasVigentesCreditoMutation();
   const zonasCobranzaQuery = useZonasCobranzaQuery();
   const zonasCobranza = useMemo(() => {
     const zonas = zonasCobranzaQuery.data ?? [];
@@ -184,8 +199,107 @@ const Clientes = () => {
     queryFn: () => ClientesService.getCreditos(clienteSeleccionado?.id as string),
     enabled: Boolean(clienteSeleccionado?.id),
   });
+  const creditoPagoDetalleQuery = useQuery({
+    queryKey: ['creditos', 'creditos', creditoPagoSeleccionado?.id ?? ''],
+    queryFn: () => CreditosService.getById(creditoPagoSeleccionado?.id as string),
+    enabled: Boolean(creditoPagoSeleccionado?.id),
+  });
 
   const guardandoCliente = createMutation.isPending || updateMutation.isPending;
+  const fichasVigentesPago = useMemo(
+    () => fichasNoPagadasOrdenadasParaPagoMultiples(creditoPagoDetalleQuery.data?.fichas ?? []),
+    [creditoPagoDetalleQuery.data?.fichas],
+  );
+  const maxFichasVigentes = fichasVigentesPago.length;
+  const cantidadFichasPagoN = Math.floor(asNumber(cantidadFichasPago));
+  const cantidadFichasValida = cantidadFichasPagoN > 0 && cantidadFichasPagoN <= maxFichasVigentes;
+  const montoPagoCalculado = useMemo(() => {
+    if (!cantidadFichasValida) return 0;
+    return fichasVigentesPago
+      .slice(0, cantidadFichasPagoN)
+      .reduce((acc, ficha) => acc + (ficha.saldoPendiente ?? ficha.total ?? 0), 0);
+  }, [cantidadFichasPagoN, cantidadFichasValida, fichasVigentesPago]);
+  const totalMedioMixto = asNumber(montoEfectivo) + asNumber(montoTransferencia);
+  const diferenciaMixto = montoPagoCalculado - totalMedioMixto;
+  const medioValido = medioPago !== 'Mixto' || Math.abs(totalMedioMixto - montoPagoCalculado) <= 0.01;
+  const puedeConfirmarPagoFichas =
+    Boolean(creditoPagoSeleccionado) &&
+    !abonarFichasVigentesMutation.isPending &&
+    cantidadFichasValida &&
+    montoPagoCalculado > 0 &&
+    medioValido;
+
+  const abrirModalPagarFichas = (creditoId: string, folio: string) => {
+    setCreditoPagoSeleccionado({ id: creditoId, folio });
+    setCantidadFichasPago(1);
+    setMedioPago('Efectivo');
+    setMontoEfectivo(0);
+    setMontoTransferencia(0);
+  };
+
+  const seleccionarMedioPago = (medio: MedioPagoCobro) => {
+    setMedioPago(medio);
+    if (medio === 'Mixto') {
+      setMontoEfectivo(montoPagoCalculado);
+      setMontoTransferencia(0);
+    }
+  };
+
+  const cerrarModalPagarFichas = () => {
+    setCreditoPagoSeleccionado(null);
+    setCantidadFichasPago(1);
+    setMedioPago('Efectivo');
+    setMontoEfectivo(0);
+    setMontoTransferencia(0);
+  };
+
+  const handlePagarFichasVigentes = async () => {
+    if (!creditoPagoSeleccionado || !puedeConfirmarPagoFichas) return;
+    try {
+      await abonarFichasVigentesMutation.mutateAsync({
+        creditoId: creditoPagoSeleccionado.id,
+        cantidadFichas: cantidadFichasPagoN,
+        montoAbono: montoPagoCalculado,
+        medio: medioPago,
+        montoEfectivo: medioPago === 'Mixto' ? asNumber(montoEfectivo) : undefined,
+        montoTransferencia: medioPago === 'Mixto' ? asNumber(montoTransferencia) : undefined,
+      });
+      toast.success('Pago de fichas registrado');
+      setTicketPagoFichas({
+        folio: creditoPagoSeleccionado.folio,
+        cantidad: cantidadFichasPagoN,
+        total: montoPagoCalculado,
+      });
+      cerrarModalPagarFichas();
+      await creditosClienteQuery.refetch();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'No fue posible registrar el pago de fichas vigentes'));
+    }
+  };
+  const imprimirTicketPagoFichas = () => {
+    if (!ticketPagoFichas) return;
+    const now = new Date();
+    const html = buildTicketHtml({
+      fecha: now.toLocaleDateString(),
+      hora: now.toLocaleTimeString(),
+      cliente: `${clienteSeleccionado?.nombre ?? ''} ${clienteSeleccionado?.apellido ?? ''}`.trim() || '-',
+      folio: ticketPagoFichas.folio,
+      concepto: 'Pago de fichas vigentes',
+      ficha: `${ticketPagoFichas.cantidad} ficha(s)`,
+      total: ticketPagoFichas.total,
+    });
+    const electronApi = (window as any).ipcRenderer;
+    if (electronApi?.printTicketHtml) {
+      void electronApi.printTicketHtml(html);
+      return;
+    }
+    const win = window.open('', '_blank', 'width=380,height=640');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+  };
 
   const rangoDesde = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const rangoHasta = Math.min(page * PAGE_SIZE, totalCount);
@@ -262,87 +376,101 @@ const Clientes = () => {
       </div>
 
       {clienteSeleccionado && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-lg">
-            <div className="mb-4 flex items-start justify-between gap-4">
+        <ModalShell
+          open
+          onClose={() => setClienteSeleccionado(null)}
+          title="Créditos del cliente"
+          subtitle={
+            <>
+              <span className="font-medium text-textDark">
+                {clienteSeleccionado.nombre} {clienteSeleccionado.apellido}
+              </span>
+              <span className="text-slate-400"> · </span>
+              <span>
+                {clienteSeleccionado.negocio} · {clienteSeleccionado.zona}
+              </span>
+            </>
+          }
+          titleId="clientes-creditos-modal-titulo"
+        >
+          {creditosClienteQuery.isLoading && <StatusPanel variant="loading" title="Cargando créditos" message="Consultando el servidor..." />}
+          {creditosClienteQuery.isError && <StatusPanel variant="error" title="No fue posible cargar créditos" message="Intenta nuevamente." />}
+          {!creditosClienteQuery.isLoading && !creditosClienteQuery.isError && (
+            <div className="space-y-6">
               <div>
-                <h2 className="text-lg font-semibold">
-                  {clienteSeleccionado.nombre} {clienteSeleccionado.apellido}
-                </h2>
-                <p className="text-sm text-textMuted">
-                  {clienteSeleccionado.negocio} · {clienteSeleccionado.zona}
-                </p>
+                <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Vigentes</h3>
+                {(creditosClienteQuery.data?.vigentes ?? []).length === 0 ? (
+                  <p className="text-sm text-textMuted">Sin créditos vigentes.</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {creditosClienteQuery.data?.vigentes.map((c) => (
+                      <div key={c.id} className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 shadow-sm transition hover:border-slate-300 hover:bg-white">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-semibold text-textDark">{c.folio}</div>
+                          <span className="badge badge-warning shrink-0">{c.estatus}</span>
+                        </div>
+                        <div className="mt-2 text-sm text-textMuted">
+                          Total: ${c.total.toLocaleString()} · Pagado: ${c.pagado.toLocaleString()}
+                        </div>
+                        <div className={`mt-3 flex flex-col gap-2 ${puedePagarFichasVigentesCliente ? 'sm:flex-row' : ''}`}>
+                          <button
+                            type="button"
+                            className={`btn btn-light w-full ${puedePagarFichasVigentesCliente ? 'sm:flex-1' : ''}`}
+                            onClick={() => {
+                              setClienteSeleccionado(null);
+                              navigate(`/creditos/${c.id}`);
+                            }}
+                          >
+                            Ver crédito
+                          </button>
+                          {puedePagarFichasVigentesCliente && (
+                            <button type="button" className="btn btn-primary w-full sm:flex-1" onClick={() => abrirModalPagarFichas(c.id, c.folio)}>
+                              Pagar fichas
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <button type="button" className="btn btn-light" onClick={() => setClienteSeleccionado(null)}>
-                Cerrar
-              </button>
+
+              <div>
+                <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Liquidados</h3>
+                {(creditosClienteQuery.data?.liquidados ?? []).length === 0 ? (
+                  <p className="text-sm text-textMuted">Sin créditos liquidados.</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {creditosClienteQuery.data?.liquidados.map((c) => (
+                      <div
+                        key={c.id}
+                        className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 text-left shadow-sm transition hover:border-slate-300 hover:bg-white"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-semibold text-textDark">{c.folio}</div>
+                          <span className="badge badge-success shrink-0">{c.estatus}</span>
+                        </div>
+                        <div className="mt-2 text-sm text-textMuted">
+                          Total: ${c.total.toLocaleString()} · Pagado: ${c.pagado.toLocaleString()}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-light mt-3 w-full"
+                          onClick={() => {
+                            setClienteSeleccionado(null);
+                            navigate(`/creditos/${c.id}`);
+                          }}
+                        >
+                          Ver crédito
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-
-            {creditosClienteQuery.isLoading && <StatusPanel variant="loading" title="Cargando créditos" message="Consultando el servidor..." />}
-            {creditosClienteQuery.isError && <StatusPanel variant="error" title="No fue posible cargar créditos" message="Intenta nuevamente." />}
-            {!creditosClienteQuery.isLoading && !creditosClienteQuery.isError && (
-              <div className="space-y-4">
-                <div>
-                  <h3 className="mb-2 font-semibold text-textDark">Vigentes</h3>
-                  {(creditosClienteQuery.data?.vigentes ?? []).length === 0 ? (
-                    <p className="text-sm text-textMuted">Sin créditos vigentes.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      {creditosClienteQuery.data?.vigentes.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-left transition-colors hover:border-gray-200 hover:bg-gray-100"
-                          onClick={() => {
-                            setClienteSeleccionado(null);
-                            navigate(`/creditos/${c.id}`);
-                          }}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="font-semibold text-textDark">{c.folio}</div>
-                            <span className="badge badge-warning">{c.estatus}</span>
-                          </div>
-                          <div className="mt-2 text-sm text-textMuted">
-                            Total: ${c.total.toLocaleString()} · Pagado: ${c.pagado.toLocaleString()}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <h3 className="mb-2 font-semibold text-textDark">Liquidados</h3>
-                  {(creditosClienteQuery.data?.liquidados ?? []).length === 0 ? (
-                    <p className="text-sm text-textMuted">Sin créditos liquidados.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      {creditosClienteQuery.data?.liquidados.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-left transition-colors hover:border-gray-200 hover:bg-gray-100"
-                          onClick={() => {
-                            setClienteSeleccionado(null);
-                            navigate(`/creditos/${c.id}`);
-                          }}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="font-semibold text-textDark">{c.folio}</div>
-                            <span className="badge badge-success">{c.estatus}</span>
-                          </div>
-                          <div className="mt-2 text-sm text-textMuted">
-                            Total: ${c.total.toLocaleString()} · Pagado: ${c.pagado.toLocaleString()}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+          )}
+        </ModalShell>
       )}
 
       <ClienteModal
@@ -356,6 +484,110 @@ const Clientes = () => {
         onSubmit={handleGuardarCliente}
       />
 
+      {creditoPagoSeleccionado && (
+        <ModalShell
+          open
+          onClose={cerrarModalPagarFichas}
+          title="Pagar fichas vigentes"
+          subtitle={creditoPagoSeleccionado.folio}
+          maxWidthClassName="max-w-md"
+          titleId="clientes-pago-fichas-modal-titulo"
+        >
+          <div className="space-y-4">
+            {creditoPagoDetalleQuery.isLoading && <StatusPanel variant="loading" title="Cargando crédito" message="Obteniendo fichas vigentes..." />}
+            {creditoPagoDetalleQuery.isError && <StatusPanel variant="error" title="No fue posible cargar el crédito" message="Intenta nuevamente." />}
+
+            {!creditoPagoDetalleQuery.isLoading && !creditoPagoDetalleQuery.isError && (
+              <>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-textDark">Cantidad de fichas a pagar</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={Math.max(1, maxFichasVigentes)}
+                    className="input w-full"
+                    value={numberInputDisplay(cantidadFichasPago)}
+                    onChange={(e) => setCantidadFichasPago(parseNumberInput(e.target.value))}
+                  />
+                  <p className="mt-1 text-xs text-textMuted">Vigentes disponibles: {maxFichasVigentes}</p>
+                  {!cantidadFichasValida && <p className="mt-1 text-xs text-red-600">La cantidad no puede ser mayor a las fichas vigentes.</p>}
+                </div>
+
+                <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <p className="text-xs uppercase tracking-wide text-textMuted">Monto a pagar</p>
+                  <p className="text-2xl font-bold text-textDark">${montoPagoCalculado.toLocaleString()}</p>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-sm font-medium text-textDark">Tipo de pago</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['Efectivo', 'Transferencia', 'Mixto'] as MedioPagoCobro[]).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        className={`btn ${medioPago === m ? 'btn-primary' : 'btn-light'}`}
+                        onClick={() => seleccionarMedioPago(m)}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {medioPago === 'Mixto' && (
+                  <div className="space-y-3 rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-textDark">Efectivo</label>
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-textMuted">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="input w-full pl-7"
+                            placeholder="0.00"
+                            value={numberInputDisplay(montoEfectivo)}
+                            onChange={(e) => setMontoEfectivo(parseNumberInput(e.target.value))}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-textDark">Transferencia</label>
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-textMuted">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="input w-full pl-7"
+                            placeholder="0.00"
+                            value={numberInputDisplay(montoTransferencia)}
+                            onChange={(e) => setMontoTransferencia(parseNumberInput(e.target.value))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-textMuted">Total capturado: <span className="font-semibold text-textDark">${totalMedioMixto.toLocaleString()}</span></p>
+                      <p className={`text-xs ${medioValido ? 'text-emerald-600' : 'text-red-600'}`}>
+                        Diferencia: ${Math.abs(diferenciaMixto).toLocaleString()}
+                        {diferenciaMixto > 0 ? ' pendiente' : diferenciaMixto < 0 ? ' excedente' : ' exacto'}
+                      </p>
+                    </div>
+                    {!medioValido && <p className="text-xs text-red-600">La suma de efectivo y transferencia debe coincidir con el monto a pagar.</p>}
+                  </div>
+                )}
+
+                <button type="button" className="btn btn-primary w-full" disabled={!puedeConfirmarPagoFichas} onClick={handlePagarFichasVigentes}>
+                  {abonarFichasVigentesMutation.isPending ? 'Procesando...' : 'Confirmar pago'}
+                </button>
+              </>
+            )}
+          </div>
+        </ModalShell>
+      )}
+
       <ConfirmDialog
         isOpen={Boolean(confirmDelete)}
         title="Eliminar cliente"
@@ -367,6 +599,29 @@ const Clientes = () => {
         onConfirm={handleEliminarCliente}
         onCancel={() => setConfirmDelete(null)}
       />
+
+      {ticketPagoFichas && (
+        <ModalShell
+          open
+          onClose={() => setTicketPagoFichas(null)}
+          title="Pago registrado con éxito"
+          subtitle={`${ticketPagoFichas.folio} · ${ticketPagoFichas.cantidad} ficha(s) · $${ticketPagoFichas.total.toLocaleString()}`}
+          maxWidthClassName="max-w-sm"
+          titleId="clientes-ticket-pago-modal-titulo"
+          footer={
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button type="button" className="btn btn-primary w-full sm:flex-1" onClick={imprimirTicketPagoFichas}>
+                Imprimir ticket
+              </button>
+              <button type="button" className="btn btn-light w-full sm:flex-1" onClick={() => setTicketPagoFichas(null)}>
+                Cerrar
+              </button>
+            </div>
+          }
+        >
+          <p className="text-sm text-textMuted">Puedes reimprimir el ticket más tarde desde el historial del crédito si lo necesitas.</p>
+        </ModalShell>
+      )}
     </div>
   );
 };

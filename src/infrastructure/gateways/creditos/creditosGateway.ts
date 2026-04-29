@@ -17,7 +17,9 @@ export const createCreditosGateway = (): CreditosGateway => {
       getById: CreditosService.getById,
       create: CreditosService.create,
       abonarFicha: CreditosService.abonarFicha,
+      abonarFichasVigentes: CreditosService.abonarFichasVigentes,
       penalizarFicha: CreditosService.penalizarFicha,
+      reversarMovimiento: CreditosService.reversarMovimiento,
       reestructurar: CreditosService.reestructurar,
       condonarInteres: CreditosService.condonarInteres,
       condonarInteresMonto: CreditosService.condonarInteresMonto,
@@ -31,6 +33,7 @@ export const createCreditosGateway = (): CreditosGateway => {
     dashboard: {
       getResumen: DashboardService.getResumen,
       getMovimientosEnRango: DashboardService.getMovimientosEnRango,
+      getMovimientosCobranzaEnRango: DashboardService.getMovimientosCobranzaEnRango,
     },
   };
 };

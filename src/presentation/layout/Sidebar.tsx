@@ -38,6 +38,7 @@ const Sidebar = ({
     if (ruta.startsWith('/clientes')) return <Users size={20} />;
     if (ruta.startsWith('/creditos/nuevo')) return <FilePlus2 size={20} />;
     if (ruta.startsWith('/creditos')) return <DollarSign size={20} />;
+    if (ruta.startsWith('/movimientos')) return <ClipboardList size={20} />;
     if (ruta.startsWith('/pendientes')) return <AlertCircle size={20} />;
     if (ruta.startsWith('/cobranza')) return <ClipboardList size={20} />;
     if (ruta.startsWith('/cortes')) return <Scissors size={20} />;

@@ -4,9 +4,10 @@ import type { CreditoApi } from '../../../../../application/creditos/creditosApp
 type CreditoCardProps = {
   credito: CreditoApi;
   onVerDetalles: () => void;
+  onPagarFichas?: () => void;
 };
 
-export const CreditoCard = ({ credito, onVerDetalles }: CreditoCardProps) => {
+export const CreditoCard = ({ credito, onVerDetalles, onPagarFichas }: CreditoCardProps) => {
   const progreso = (credito.pagado / credito.total) * 100;
 
   return (
@@ -56,6 +57,11 @@ export const CreditoCard = ({ credito, onVerDetalles }: CreditoCardProps) => {
           <button type="button" className="text-sm text-primaryBlue hover:underline py-1 text-left sm:text-center whitespace-nowrap min-w-0 w-fit" onClick={onVerDetalles}>
             Ver detalles
           </button>
+          {onPagarFichas && credito.estatus === 'Activo' && (
+            <button type="button" className="text-sm text-primaryBlue hover:underline py-1 text-left sm:text-center whitespace-nowrap min-w-0 w-fit" onClick={onPagarFichas}>
+              Pagar fichas
+            </button>
+          )}
         </div>
       </div>
     </div>

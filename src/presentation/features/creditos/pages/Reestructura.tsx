@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { ConfirmDialog } from '../../../../infrastructure/ui/components/ConfirmDialog';
 import StatusPanel from '../../../../infrastructure/ui/components/StatusPanel';
 import { getErrorMessage } from '../../../../infrastructure/utils/getErrorMessage';
 import { asNumber, type NumberInputValue } from '../../../../infrastructure/utils/numberInput';
@@ -18,6 +19,7 @@ const Reestructura = () => {
 
   const [montoExtra, setMontoExtra] = useState<NumberInputValue>(0);
   const [nuevoPlazo, setNuevoPlazo] = useState<NumberInputValue>(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const reestructuraMutation = useReestructurarCreditoMutation();
 
@@ -38,20 +40,33 @@ const Reestructura = () => {
 
   const saldoPendiente = credito.total - credito.pagado;
   const plazoDefault = (nuevoPlazo === '' ? 0 : nuevoPlazo) || credito.totalFichas;
+  const montoExtraSafe = Math.max(0, asNumber(montoExtra));
+  const nuevoMontoCredito = saldoPendiente + montoExtraSafe;
+  const folioLabel = credito.folio?.trim() || 'este crédito';
+  const confirmMessage = `Crédito ${folioLabel}: el saldo pendiente de $${saldoPendiente.toLocaleString()}${montoExtraSafe > 0 ? ` más $${montoExtraSafe.toLocaleString()} extra` : ''} generará un nuevo crédito de $${nuevoMontoCredito.toLocaleString()} en ${plazoDefault} ficha(s). El crédito actual quedará como reestructurado.`;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitIntent = (e: React.FormEvent) => {
     e.preventDefault();
     const plazo = plazoDefault;
+    if (plazo <= 0) {
+      toast.error('El plazo debe ser al menos 1 ficha.');
+      return;
+    }
+    setConfirmOpen(true);
+  };
+
+  const aplicarReestructura = async () => {
+    const plazo = plazoDefault;
     if (plazo <= 0) return;
-    const nuevoMonto = saldoPendiente + Math.max(0, asNumber(montoExtra));
     try {
       await reestructuraMutation.mutateAsync({
         creditoId: credito.id,
-        nuevoMonto,
+        nuevoMonto: nuevoMontoCredito,
         nuevoPlazo: plazo,
         tipo: credito.tipo,
       });
       toast.success('Crédito reestructurado');
+      setConfirmOpen(false);
       navigate('/creditos');
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'No fue posible reestructurar el crédito'));
@@ -81,12 +96,23 @@ const Reestructura = () => {
         onChangeMontoExtra={setMontoExtra}
         onChangePlazo={setNuevoPlazo}
         onCancel={() => navigate(-1)}
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmitIntent}
         submitting={reestructuraMutation.isPending}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Confirmar reestructura"
+        message={confirmMessage}
+        confirmLabel="Sí, reestructurar"
+        cancelLabel="Cancelar"
+        type="warning"
+        loading={reestructuraMutation.isPending}
+        onConfirm={() => void aplicarReestructura()}
+        onCancel={() => setConfirmOpen(false)}
       />
     </div>
   );
 };
 
 export default Reestructura;
-

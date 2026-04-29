@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     const [channel, ...rest] = args;
     return ipcRenderer.invoke(channel, ...rest);
   },
+  printTicketHtml(html: string) {
+    return ipcRenderer.invoke('print-ticket-html', html);
+  },
 
   // You can expose other apts you need here.
   // ...

@@ -38,6 +38,8 @@ export const API_ENDPOINTS_CREDITOS = {
   CREDITOS: '/api/creditos/creditos',
   CREDITO_BY_ID: '/api/creditos/creditos/{id}',
   ABONO_FICHA: '/api/creditos/creditos/{creditoId}/fichas/{numeroFicha}/abonos',
+  ABONO_FICHAS_VIGENTES: '/api/creditos/creditos/{creditoId}/fichas/vigentes/abonos',
+  REVERSA_MOVIMIENTO: '/api/creditos/creditos/{creditoId}/movimientos/{movimientoId}/reversa',
   MULTA_FICHA: '/api/creditos/creditos/{creditoId}/fichas/{numeroFicha}/multas',
   REESTRUCTURAR: '/api/creditos/creditos/{creditoId}/reestructura',
   CONDONAR_INTERES: '/api/creditos/creditos/{creditoId}/fichas/{numeroFicha}/condonacion',
@@ -49,6 +51,7 @@ export const API_ENDPOINTS_CREDITOS = {
   REPORTES: '/api/creditos/reportes',
   DASHBOARD_RESUMEN: '/api/creditos/dashboard/resumen',
   DASHBOARD_MOVIMIENTOS: '/api/creditos/dashboard/movimientos',
+  DASHBOARD_MOVIMIENTOS_COBRANZA: '/api/creditos/dashboard/movimientos-cobranza',
 } as const;
 
 export const API_ENDPOINTS_COBRANZA = {

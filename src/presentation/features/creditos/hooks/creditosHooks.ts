@@ -89,6 +89,7 @@ const invalidateTrasFichaCredito = async (queryClient: QueryClient, creditoId: s
   await queryClient.invalidateQueries({ queryKey: ['creditos', 'creditos', creditoId, 'movimientos'] });
   await queryClient.invalidateQueries({ queryKey: ['cobranza', 'pendientes'] });
   await queryClient.invalidateQueries({ queryKey: ['creditos', 'dashboard', 'movimientos'] });
+  await queryClient.invalidateQueries({ queryKey: ['creditos', 'dashboard', 'movimientos-cobranza'] });
 };
 
 export const useAbonarFichaCreditoMutation = () => {
@@ -102,11 +103,34 @@ export const useAbonarFichaCreditoMutation = () => {
   });
 };
 
+export const useAbonarFichasVigentesCreditoMutation = () => {
+  const queryClient = useQueryClient();
+  const { services } = useAppContainer();
+  return useMutation({
+    mutationFn: (payload: { creditoId: string; cantidadFichas: number; montoAbono: number; medio: 'Efectivo' | 'Transferencia' | 'Mixto'; montoEfectivo?: number; montoTransferencia?: number; idempotencyKey?: string }) =>
+      services.creditos.creditos.abonarFichasVigentes(payload),
+    onSuccess: async (_data, variables) => {
+      await invalidateTrasFichaCredito(queryClient, variables.creditoId);
+    },
+  });
+};
+
 export const usePenalizarFichaCreditoMutation = () => {
   const queryClient = useQueryClient();
   const { services } = useAppContainer();
   return useMutation({
     mutationFn: (payload: PenalizarFichaCreditoRequest) => services.creditos.creditos.penalizarFicha(payload),
+    onSuccess: async (_data, variables) => {
+      await invalidateTrasFichaCredito(queryClient, variables.creditoId);
+    },
+  });
+};
+
+export const useReversarMovimientoCreditoMutation = () => {
+  const queryClient = useQueryClient();
+  const { services } = useAppContainer();
+  return useMutation({
+    mutationFn: (payload: { creditoId: string; movimientoId: string }) => services.creditos.creditos.reversarMovimiento(payload),
     onSuccess: async (_data, variables) => {
       await invalidateTrasFichaCredito(queryClient, variables.creditoId);
     },
@@ -127,11 +151,39 @@ export const useReestructurarCreditoMutation = () => {
   });
 };
 
-export const useDashboardMovimientosRangoQuery = (params: { fechaDesde: string; fechaHasta: string; zonaId?: string; cobradorId?: string }) => {
+export const useDashboardMovimientosRangoQuery = (params: { fechaDesde: string; fechaHasta: string; zonaId?: string; cobradorId?: string; creditoFolio?: string; clienteNombre?: string }) => {
   const { services } = useAppContainer();
   return useQuery({
-    queryKey: ['creditos', 'dashboard', 'movimientos', params.fechaDesde, params.fechaHasta, params.zonaId ?? '', params.cobradorId ?? ''],
+    queryKey: [
+      'creditos',
+      'dashboard',
+      'movimientos',
+      params.fechaDesde,
+      params.fechaHasta,
+      params.zonaId ?? '',
+      params.cobradorId ?? '',
+      params.creditoFolio ?? '',
+      params.clienteNombre ?? '',
+    ],
     queryFn: () => services.creditos.dashboard.getMovimientosEnRango(params),
+  });
+};
+
+export const useCobranzaMovimientosRangoQuery = (params: { fechaDesde: string; fechaHasta: string; zonaId?: string; cobradorId?: string; creditoFolio?: string; clienteNombre?: string }) => {
+  const { services } = useAppContainer();
+  return useQuery({
+    queryKey: [
+      'creditos',
+      'dashboard',
+      'movimientos-cobranza',
+      params.fechaDesde,
+      params.fechaHasta,
+      params.zonaId ?? '',
+      params.cobradorId ?? '',
+      params.creditoFolio ?? '',
+      params.clienteNombre ?? '',
+    ],
+    queryFn: () => services.creditos.dashboard.getMovimientosCobranzaEnRango(params),
   });
 };
 

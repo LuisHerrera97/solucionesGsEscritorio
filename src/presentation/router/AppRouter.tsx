@@ -7,6 +7,7 @@ import Clientes from '../features/creditos/pages/Clientes';
 import Cobranza from '../features/cobranza/pages/Cobranza';
 import Cortes from '../features/creditos/pages/Cortes';
 import Creditos from '../features/creditos/pages/Creditos';
+import Movimientos from '../features/creditos/pages/Movimientos';
 import HomePage from '../features/home/pages/Home';
 import DetalleCredito from '../features/creditos/pages/DetalleCredito';
 import EstadoCuentaCredito from '../features/creditos/pages/EstadoCuentaCredito';
@@ -220,6 +221,16 @@ const AppRouter = () => {
           <ProtectedRoute>
             <Layout>
               <Creditos />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/movimientos"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Movimientos />
             </Layout>
           </ProtectedRoute>
         }

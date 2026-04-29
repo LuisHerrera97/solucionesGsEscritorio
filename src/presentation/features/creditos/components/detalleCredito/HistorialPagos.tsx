@@ -1,20 +1,61 @@
 import { ArrowRightLeft, Banknote, CreditCard, History, Scale } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { useAuth } from '../../../auth/context/useAuth';
 import { useMovimientosByCreditoQuery } from '../../hooks/creditosHooks';
+import { useReversarMovimientoCreditoMutation } from '../../hooks/creditosHooks';
 import StatusPanel from '../../../../../infrastructure/ui/components/StatusPanel';
 import { formatCalendarDateFromApi } from '../../../../../shared/date/calendarDate';
+import { getErrorMessage } from '../../../../../infrastructure/utils/getErrorMessage';
+import { buildTicketHtml } from '../../../../../shared/ticket/buildTicketHtml';
 
 type HistorialPagosProps = {
   creditoId: string;
 };
 
 export const HistorialPagos = ({ creditoId }: HistorialPagosProps) => {
+  const { canBoton } = useAuth();
+  const puedeReversarMovimiento = canBoton('CREDITO_PAGAR_FICHA') || canBoton('CREDITO_ABONAR_FICHA');
   const movimientosQuery = useMovimientosByCreditoQuery(creditoId);
+  const reversarMutation = useReversarMovimientoCreditoMutation();
 
   if (movimientosQuery.isLoading) {
     return <StatusPanel variant="loading" title="Cargando historial" message="Obteniendo movimientos del crédito..." />;
   }
 
   const movimientos = movimientosQuery.data ?? [];
+  const printTicket = (mId: string) => {
+    const movimiento = movimientos.find((m) => m.id === mId);
+    if (!movimiento) return;
+    const html = buildTicketHtml({
+      fecha: formatCalendarDateFromApi(movimiento.fecha),
+      hora: movimiento.hora ?? '-',
+      cliente: movimiento.clienteNombre ?? '-',
+      folio: movimiento.creditoFolio ?? '-',
+      concepto: movimiento.concepto ?? movimiento.tipo,
+      ficha: movimiento.numeroFicha ? `#${movimiento.numeroFicha}` : '-',
+      total: movimiento.total,
+    });
+    const electronApi = (window as any).ipcRenderer;
+    if (electronApi?.printTicketHtml) {
+      void electronApi.printTicketHtml(html);
+      return;
+    }
+    const win = window.open('', '_blank', 'width=380,height=640');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+  };
+
+  const handleReversa = async (movimientoId: string) => {
+    try {
+      await reversarMutation.mutateAsync({ creditoId, movimientoId });
+      toast.success('Operación desaplicada');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'No fue posible desaplicar la operación'));
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
@@ -145,6 +186,16 @@ export const HistorialPagos = ({ creditoId }: HistorialPagosProps) => {
                     <span className="text-lg font-black text-slate-800 font-mono tracking-tighter">
                       ${m.total.toLocaleString()}
                     </span>
+                    <div className="mt-2 flex justify-end gap-2">
+                      <button type="button" className="btn btn-light px-2 py-1 text-[10px]" onClick={() => printTicket(m.id)}>
+                        Reimprimir
+                      </button>
+                      {puedeReversarMovimiento && !m.revertido && !m.reversaDeId && (m.tipo === 'Ficha' || m.tipo === 'Penalizacion') && (
+                        <button type="button" className="btn btn-light px-2 py-1 text-[10px]" onClick={() => handleReversa(m.id)}>
+                          Desaplicar
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

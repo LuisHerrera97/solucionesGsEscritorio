@@ -1,5 +1,5 @@
 import type { AbonarFichaCreditoRequest, Cliente, ClientesListado, Credito, DashboardResumenDto, PenalizarFichaCreditoRequest } from '../../domain/creditos/types';
-import type { MovimientoCajaDto } from '../../domain/creditos/caja/types';
+import type { MovimientoCajaCobranzaDto, MovimientoCajaDto } from '../../domain/creditos/caja/types';
 import type { CorteCajaDto } from '../../domain/creditos/cortes/types';
 
 export type CreditoApi = Credito & {
@@ -40,7 +40,9 @@ export type CreditosGateway = {
       observacion?: string;
     }) => Promise<CreditoApi>;
     abonarFicha: (payload: AbonarFichaCreditoRequest) => Promise<CreditoApi>;
+    abonarFichasVigentes: (payload: { creditoId: string; cantidadFichas: number; montoAbono: number; medio: 'Efectivo' | 'Transferencia' | 'Mixto'; montoEfectivo?: number; montoTransferencia?: number; idempotencyKey?: string }) => Promise<CreditoApi>;
     penalizarFicha: (payload: PenalizarFichaCreditoRequest) => Promise<CreditoApi>;
+    reversarMovimiento: (payload: { creditoId: string; movimientoId: string }) => Promise<CreditoApi>;
     reestructurar: (payload: { creditoId: string; nuevoMonto: number; nuevoPlazo: number; tipo: 'diario' | 'semanal' | 'mensual' }) => Promise<CreditoApi>;
     condonarInteres: (payload: { creditoId: string; numeroFicha: number }) => Promise<string>;
     condonarInteresMonto: (payload: { creditoId: string; monto: number }) => Promise<string>;
@@ -53,7 +55,15 @@ export type CreditosGateway = {
   };
   dashboard: {
     getResumen: (params?: { zonaId?: string }) => Promise<DashboardResumenDto>;
-    getMovimientosEnRango: (params: { fechaDesde: string; fechaHasta: string; zonaId?: string; cobradorId?: string }) => Promise<MovimientoCajaDto[]>;
+    getMovimientosEnRango: (params: { fechaDesde: string; fechaHasta: string; zonaId?: string; cobradorId?: string; creditoFolio?: string; clienteNombre?: string }) => Promise<MovimientoCajaDto[]>;
+    getMovimientosCobranzaEnRango: (params: {
+      fechaDesde: string;
+      fechaHasta: string;
+      zonaId?: string;
+      cobradorId?: string;
+      creditoFolio?: string;
+      clienteNombre?: string;
+    }) => Promise<MovimientoCajaCobranzaDto[]>;
   };
 }
 
@@ -85,7 +95,9 @@ export class CreditosAppService {
       observacion?: string;
     }): Promise<CreditoApi> => this.gateway.creditos.create(payload),
     abonarFicha: async (payload: AbonarFichaCreditoRequest): Promise<CreditoApi> => this.gateway.creditos.abonarFicha(payload),
+    abonarFichasVigentes: async (payload: { creditoId: string; cantidadFichas: number; montoAbono: number; medio: 'Efectivo' | 'Transferencia' | 'Mixto'; montoEfectivo?: number; montoTransferencia?: number; idempotencyKey?: string }): Promise<CreditoApi> => this.gateway.creditos.abonarFichasVigentes(payload),
     penalizarFicha: async (payload: PenalizarFichaCreditoRequest): Promise<CreditoApi> => this.gateway.creditos.penalizarFicha(payload),
+    reversarMovimiento: async (payload: { creditoId: string; movimientoId: string }): Promise<CreditoApi> => this.gateway.creditos.reversarMovimiento(payload),
     reestructurar: async (payload: { creditoId: string; nuevoMonto: number; nuevoPlazo: number; tipo: 'diario' | 'semanal' | 'mensual' }): Promise<CreditoApi> =>
       this.gateway.creditos.reestructurar(payload),
     condonarInteres: async (payload: { creditoId: string; numeroFicha: number }): Promise<string> =>
@@ -103,8 +115,16 @@ export class CreditosAppService {
   };
   dashboard = {
     getResumen: async (params?: { zonaId?: string }): Promise<DashboardResumenDto> => this.gateway.dashboard.getResumen(params),
-    getMovimientosEnRango: async (params: { fechaDesde: string; fechaHasta: string; zonaId?: string; cobradorId?: string }): Promise<MovimientoCajaDto[]> =>
+    getMovimientosEnRango: async (params: { fechaDesde: string; fechaHasta: string; zonaId?: string; cobradorId?: string; creditoFolio?: string; clienteNombre?: string }): Promise<MovimientoCajaDto[]> =>
       this.gateway.dashboard.getMovimientosEnRango(params),
+    getMovimientosCobranzaEnRango: async (params: {
+      fechaDesde: string;
+      fechaHasta: string;
+      zonaId?: string;
+      cobradorId?: string;
+      creditoFolio?: string;
+      clienteNombre?: string;
+    }): Promise<MovimientoCajaCobranzaDto[]> => this.gateway.dashboard.getMovimientosCobranzaEnRango(params),
   };
 
 }

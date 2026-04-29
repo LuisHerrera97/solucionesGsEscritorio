@@ -30,6 +30,7 @@ export interface Ficha {
   saldoCap: number;
   saldoPendiente: number;
   pagada: boolean;
+  aplicado?: boolean;
 }
 
 export interface Credito {
@@ -54,6 +55,7 @@ export type MedioPago = 'Efectivo' | 'Tarjeta' | 'Transferencia' | 'Mixto';
 export type AbonarFichaCreditoRequest = {
   creditoId: string;
   numeroFicha: number;
+  cantidadFichas?: number;
   idempotencyKey?: string;
   montoAbono?: number;
   medio?: MedioPago;
