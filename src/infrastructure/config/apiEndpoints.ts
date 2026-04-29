@@ -31,7 +31,6 @@ export const API_ENDPOINTS_GENERAL = {
   FERIADOS: '/api/general/feriados',
 } as const;
 
-/** Rutas HTTP del módulo de créditos en el backend (`api/creditos`). */
 export const API_ENDPOINTS_CREDITOS = {
   CLIENTES: '/api/creditos/clientes',
   CLIENTE_BY_ID: '/api/creditos/clientes/{id}',
@@ -55,14 +54,4 @@ export const API_ENDPOINTS_CREDITOS = {
 export const API_ENDPOINTS_COBRANZA = {
   PENDIENTES: '/api/cobranza/pendientes',
   COBRANZA: '/api/cobranza/cobranza',
-
-  LIQUIDACIONES: '/api/cobranza/liquidaciones',
-  LIQUIDACIONES_RESUMEN_PENDIENTE: '/api/cobranza/liquidaciones/pendiente/resumen',
-  LIQUIDACIONES_HISTORIAL: '/api/cobranza/liquidaciones/historial',
-  LIQUIDACIONES_ALL: '/api/cobranza/liquidaciones/all',
-  LIQUIDACIONES_COBRADORES_RESUMEN: '/api/cobranza/liquidaciones/cobradores/resumen',
-  LIQUIDACIONES_COBRADOR_MOVIMIENTOS_PENDIENTES: '/api/cobranza/liquidaciones/cobradores/{cobradorId}/movimientos-pendientes',
-  LIQUIDACIONES_CONFIRMAR: '/api/cobranza/liquidaciones/{id}/confirmar',
-  LIQUIDACIONES_RECHAZAR: '/api/cobranza/liquidaciones/{id}/rechazar',
-  LIQUIDACIONES_MARCAR_RECIBIDO_CAJA: '/api/cobranza/liquidaciones/movimientos/marcar-recibido-caja',
 } as const;
